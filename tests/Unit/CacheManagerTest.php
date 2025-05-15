@@ -6,6 +6,7 @@ namespace Zaphyr\CacheTests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Psr\SimpleCache\CacheException;
+use Zaphyr\Cache\ArrayCache;
 use Zaphyr\Cache\CacheManager;
 use Zaphyr\Cache\FileCache;
 
@@ -40,12 +41,27 @@ class CacheManagerTest extends TestCase
         self::assertInstanceOf(FileCache::class, $this->cacheManager->cache());
     }
 
+    public function testCacheWithChangedDefaultCache(): void
+    {
+        $this->cacheManager = new CacheManager([], CacheManager::ARRAY_CACHE);
+
+        self::assertInstanceOf(ArrayCache::class, $this->cacheManager->cache());
+    }
+
     public function testCacheReturnsSameInstance(): void
     {
         $cache1 = $this->cacheManager->cache();
         $cache2 = $this->cacheManager->cache();
 
         self::assertSame($cache1, $cache2);
+    }
+
+    public function testCacheReturnsArrayCache(): void
+    {
+        self::assertInstanceOf(
+            ArrayCache::class,
+            $this->cacheManager->cache(CacheManager::ARRAY_CACHE)
+        );
     }
 
     public function testCacheReturnsFileCache(): void

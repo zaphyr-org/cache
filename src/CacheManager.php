@@ -17,6 +17,11 @@ class CacheManager implements CacheManagerInterface
     /**
      * @const string
      */
+    public const ARRAY_CACHE = 'array';
+
+    /**
+     * @const string
+     */
     public const FILE_CACHE = 'file';
 
     /**
@@ -56,7 +61,7 @@ class CacheManager implements CacheManagerInterface
      */
     public function addCache(string $name, Closure $callback, bool $force = false): static
     {
-        if ((!$force && isset($this->customCaches[$name])) || in_array($name, [self::FILE_CACHE])) {
+        if ((!$force && isset($this->customCaches[$name])) || in_array($name, [self::ARRAY_CACHE, self::FILE_CACHE])) {
             throw new CacheException('Cache with name "' . $name . '" already exists.');
         }
 
@@ -68,11 +73,13 @@ class CacheManager implements CacheManagerInterface
     /**
      * @param string $cache
      *
+     * @throws CacheException if the cache name does not exist
      * @return CacheInterface
      */
     protected function createCache(string $cache): CacheInterface
     {
         return match ($cache) {
+            self::ARRAY_CACHE => new ArrayCache(),
             self::FILE_CACHE => $this->createFileCache(),
             default => $this->createCustomCache($cache),
         };

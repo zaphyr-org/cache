@@ -16,6 +16,7 @@ interface CacheManagerInterface
     /**
      * @param string|null $cache
      *
+     * @throws CacheException if the cache name does not exist
      * @return CacheInterface
      */
     public function cache(?string $cache = null): CacheInterface;

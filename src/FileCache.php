@@ -61,16 +61,6 @@ class FileCache extends AbstractCache
     }
 
     /**
-     * @param array<string, mixed> $contents
-     *
-     * @return bool
-     */
-    protected function isValidCacheData(array $contents): bool
-    {
-        return isset($contents['value'], $contents['expiry']) && is_int($contents['expiry']);
-    }
-
-    /**
      * {@inheritdoc}
      */
     public function set(string $key, mixed $value, DateInterval|int|null $ttl = null): bool
@@ -120,42 +110,6 @@ class FileCache extends AbstractCache
         }
 
         File::chmod($directory, $this->permissions);
-    }
-
-    /**
-     * @param mixed                 $value
-     * @param DateInterval|int|null $ttl
-     *
-     * @return array{value: mixed, expiry: int}
-     */
-    protected function createCacheItem(mixed $value, DateInterval|int|null $ttl = null): array
-    {
-        return [
-            'value' => $value,
-            'expiry' => $this->expiry($ttl),
-        ];
-    }
-
-    /**
-     * @param DateInterval|int|null $ttl
-     *
-     * @return int
-     */
-    protected function expiry(DateInterval|int|null $ttl): int
-    {
-        if ($ttl instanceof DateInterval) {
-            return time() + $ttl->s;
-        }
-
-        if ($ttl === null || $ttl > 9999999999) {
-            return 9999999999;
-        }
-
-        if ($ttl <= 0) {
-            return 0;
-        }
-
-        return time() + $ttl;
     }
 
     /**
