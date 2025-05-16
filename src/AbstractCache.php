@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Zaphyr\Cache;
 
 use DateInterval;
+use DateTime;
 use Psr\SimpleCache\CacheInterface;
 use Zaphyr\Cache\Exceptions\InvalidArgumentException;
 
@@ -82,17 +83,31 @@ abstract class AbstractCache implements CacheInterface
     protected function expiry(DateInterval|int|null $ttl): int
     {
         if ($ttl instanceof DateInterval) {
-            return time() + $ttl->s;
+            return $this->convertDateIntervalToTimestamp($ttl);
         }
 
-        if ($ttl === null || $ttl > 9999999999) {
-            return 9999999999;
+        if (is_int($ttl)) {
+            if ($ttl <= 0) {
+                return 0;
+            }
+
+            if ($ttl > 9999999999) {
+                return 9999999999;
+            }
+
+            return time() + $ttl;
         }
 
-        if ($ttl <= 0) {
-            return 0;
-        }
+        return 9999999999;
+    }
 
-        return time() + $ttl;
+    /**
+     * @param DateInterval $interval
+     *
+     * @return int
+     */
+    protected function convertDateIntervalToTimestamp(DateInterval $interval): int
+    {
+        return (new DateTime())->add($interval)->getTimestamp();
     }
 }
