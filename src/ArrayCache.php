@@ -103,7 +103,9 @@ class ArrayCache extends AbstractCache
      */
     public function setMultiple(iterable $values, DateInterval|int|null $ttl = null): bool
     {
-        $this->validateMultipleKeys($values);
+        foreach ($values as $key => $value) {
+            $this->validateKey($key);
+        }
 
         $success = true;
 
