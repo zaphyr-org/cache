@@ -9,6 +9,7 @@ use Psr\SimpleCache\CacheException;
 use Zaphyr\Cache\ArrayCache;
 use Zaphyr\Cache\CacheManager;
 use Zaphyr\Cache\FileCache;
+use Zaphyr\Cache\RedisCache;
 
 class CacheManagerTest extends TestCase
 {
@@ -69,6 +70,14 @@ class CacheManagerTest extends TestCase
         self::assertInstanceOf(
             FileCache::class,
             $this->cacheManager->cache(CacheManager::FILE_CACHE)
+        );
+    }
+
+    public function testCacheReturnsRedisCache(): void
+    {
+        self::assertInstanceOf(
+            RedisCache::class,
+            $this->cacheManager->cache(CacheManager::REDIS_CACHE)
         );
     }
 

@@ -6,6 +6,7 @@ namespace Zaphyr\CacheTests\Unit;
 
 use ArrayIterator;
 use DateInterval;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
 use Psr\SimpleCache\InvalidArgumentException;
 use Zaphyr\Cache\ArrayCache;
@@ -25,27 +26,6 @@ class ArrayCacheTest extends TestCase
                 return $this->storage[$key];
             }
         };
-    }
-
-    /**
-     * @return array<string[]>
-     */
-    public static function getIllegalCharactersDataProvider(): array
-    {
-        return [
-            [''],
-            [' '],
-            ["\x80\x81\x82"],
-            ['{'],
-            ['}'],
-            ['('],
-            [')'],
-            ['/'],
-            ['\\'],
-            ['@'],
-            [':'],
-            ['{}()/\@:'],
-        ];
     }
 
     /* -------------------------------------------------
@@ -81,9 +61,7 @@ class ArrayCacheTest extends TestCase
         self::assertEquals($defaultValue, $this->arrayCache->get($key, $defaultValue));
     }
 
-    /**
-     * @dataProvider getIllegalCharactersDataProvider
-     */
+    #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testGetThrowsExceptionOnInvalidKey(string $illegalKey): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -165,9 +143,7 @@ class ArrayCacheTest extends TestCase
         self::assertNull($this->arrayCache->get($key));
     }
 
-    /**
-     * @dataProvider getIllegalCharactersDataProvider
-     */
+    #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testSetThrowsExceptionOnInvalidKey(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -294,9 +270,7 @@ class ArrayCacheTest extends TestCase
         $this->arrayCache->getMultiple(['valid_key', '']);
     }
 
-    /**
-     * @dataProvider getIllegalCharactersDataProvider
-     */
+    #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testGetMultipleWithInvalidKeys(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -422,9 +396,7 @@ class ArrayCacheTest extends TestCase
         $this->arrayCache->setMultiple($values);
     }
 
-    /**
-     * @dataProvider getIllegalCharactersDataProvider
-     */
+    #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testSetMultipleWithInvalidKeys(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -505,9 +477,7 @@ class ArrayCacheTest extends TestCase
         $this->arrayCache->deleteMultiple(['valid.key', '']);
     }
 
-    /**
-     * @dataProvider getIllegalCharactersDataProvider
-     */
+    #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testDeleteMultipleWithInvalidKeys(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -557,9 +527,7 @@ class ArrayCacheTest extends TestCase
         self::assertFalse($this->arrayCache->has($key));
     }
 
-    /**
-     * @dataProvider getIllegalCharactersDataProvider
-     */
+    #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testHasThrowsExceptionOnInvalidKey(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);

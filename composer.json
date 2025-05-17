@@ -22,11 +22,15 @@
     "require-dev": {
         "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^10.5",
+        "predis/predis": "^3.0",
         "roave/security-advisories": "dev-latest",
         "squizlabs/php_codesniffer": "^4.0"
     },
     "provide": {
         "psr/simple-cache-implementation": "^3.0"
+    },
+    "suggest": {
+        "predis/predis": "The redis client for PHP. Required for Redis cache."
     },
     "autoload": {
         "psr-4": {
