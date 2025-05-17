@@ -9,18 +9,18 @@ use DateInterval;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
 use Psr\SimpleCache\InvalidArgumentException;
-use Zaphyr\Cache\ArrayCache;
+use Zaphyr\Cache\Stores\ArrayStore;
 
-class ArrayCacheTest extends TestCase
+class ArrayStoreTest extends TestCase
 {
     /**
-     * @var ArrayCache
+     * @var ArrayStore
      */
-    protected ArrayCache $arrayCache;
+    protected ArrayStore $arrayStore;
 
     protected function setUp(): void
     {
-        $this->arrayCache = new class extends ArrayCache {
+        $this->arrayStore = new class extends ArrayStore {
             public function getStorage(string $key): array
             {
                 return $this->storage[$key];
@@ -38,9 +38,9 @@ class ArrayCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        $this->arrayCache->set($key, $value);
+        $this->arrayStore->set($key, $value);
 
-        self::assertEquals($value, $this->arrayCache->get($key));
+        self::assertEquals($value, $this->arrayStore->get($key));
     }
 
     /* -------------------------------------------------
@@ -50,7 +50,7 @@ class ArrayCacheTest extends TestCase
 
     public function testGetDefaultValueIsNull(): void
     {
-        self::assertNull($this->arrayCache->get('non_existent_key'));
+        self::assertNull($this->arrayStore->get('non_existent_key'));
     }
 
     public function testGetWithDefaultValue(): void
@@ -58,14 +58,14 @@ class ArrayCacheTest extends TestCase
         $key = 'non_existent_key';
         $defaultValue = 'default_value';
 
-        self::assertEquals($defaultValue, $this->arrayCache->get($key, $defaultValue));
+        self::assertEquals($defaultValue, $this->arrayStore->get($key, $defaultValue));
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testGetThrowsExceptionOnInvalidKey(string $illegalKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->arrayCache->get($illegalKey);
+        $this->arrayStore->get($illegalKey);
     }
 
     /* -------------------------------------------------
@@ -79,12 +79,12 @@ class ArrayCacheTest extends TestCase
         $value = 'test_value';
         $expiry = new DateInterval('PT1S');
 
-        self::assertTrue($this->arrayCache->set($key, $value, $expiry));
-        self::assertEquals($value, $this->arrayCache->get($key));
+        self::assertTrue($this->arrayStore->set($key, $value, $expiry));
+        self::assertEquals($value, $this->arrayStore->get($key));
 
-        $this->arrayCache->delete($key);
+        $this->arrayStore->delete($key);
 
-        self::assertNull($this->arrayCache->get($key));
+        self::assertNull($this->arrayStore->get($key));
     }
 
     public function testSetWithTtlInteger(): void
@@ -93,12 +93,12 @@ class ArrayCacheTest extends TestCase
         $value = 'test_value';
         $expiry = 1;
 
-        self::assertTrue($this->arrayCache->set($key, $value, $expiry));
-        self::assertEquals($value, $this->arrayCache->get($key));
+        self::assertTrue($this->arrayStore->set($key, $value, $expiry));
+        self::assertEquals($value, $this->arrayStore->get($key));
 
-        $this->arrayCache->delete($key);
+        $this->arrayStore->delete($key);
 
-        self::assertNull($this->arrayCache->get($key));
+        self::assertNull($this->arrayStore->get($key));
     }
 
     public function testSetWithNullTtlLastsForever(): void
@@ -106,9 +106,9 @@ class ArrayCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        self::assertTrue($this->arrayCache->set($key, $value));
+        self::assertTrue($this->arrayStore->set($key, $value));
 
-        $storage = $this->arrayCache->getStorage($key);
+        $storage = $this->arrayStore->getStorage($key);
 
         self::assertEquals(9999999999, $storage['expiry']);
     }
@@ -118,9 +118,9 @@ class ArrayCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        self::assertTrue($this->arrayCache->set($key, $value, 999999999999999999));
+        self::assertTrue($this->arrayStore->set($key, $value, 999999999999999999));
 
-        $storage = $this->arrayCache->getStorage($key);
+        $storage = $this->arrayStore->getStorage($key);
 
         self::assertEquals(9999999999, $storage['expiry']);
     }
@@ -130,8 +130,8 @@ class ArrayCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        self::assertTrue($this->arrayCache->set($key, $value, 0));
-        self::assertNull($this->arrayCache->get($key));
+        self::assertTrue($this->arrayStore->set($key, $value, 0));
+        self::assertNull($this->arrayStore->get($key));
     }
 
     public function testSetWithNegativeTtlRemovesValue(): void
@@ -139,15 +139,15 @@ class ArrayCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        self::assertTrue($this->arrayCache->set($key, $value, -1));
-        self::assertNull($this->arrayCache->get($key));
+        self::assertTrue($this->arrayStore->set($key, $value, -1));
+        self::assertNull($this->arrayStore->get($key));
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testSetThrowsExceptionOnInvalidKey(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->arrayCache->set($invalidKey, 'value');
+        $this->arrayStore->set($invalidKey, 'value');
     }
 
     /* -------------------------------------------------
@@ -159,18 +159,18 @@ class ArrayCacheTest extends TestCase
     {
         $key = 'test.key';
         $value = 'test_value';
-        $this->arrayCache->set($key, $value);
+        $this->arrayStore->set($key, $value);
 
-        self::assertEquals($value, $this->arrayCache->get($key));
-        self::assertTrue($this->arrayCache->delete($key));
-        self::assertNull($this->arrayCache->get($key));
+        self::assertEquals($value, $this->arrayStore->get($key));
+        self::assertTrue($this->arrayStore->delete($key));
+        self::assertNull($this->arrayStore->get($key));
     }
 
     public function testDeleteReturnsFalseOnFailure(): void
     {
         $key = 'non_existent_key';
 
-        self::assertFalse($this->arrayCache->delete($key));
+        self::assertFalse($this->arrayStore->delete($key));
     }
 
     /* -------------------------------------------------
@@ -182,11 +182,11 @@ class ArrayCacheTest extends TestCase
     {
         $key = 'test.key';
         $value = 'test_value';
-        $this->arrayCache->set($key, $value);
+        $this->arrayStore->set($key, $value);
 
-        self::assertEquals($value, $this->arrayCache->get($key));
-        self::assertTrue($this->arrayCache->clear());
-        self::assertNull($this->arrayCache->get($key));
+        self::assertEquals($value, $this->arrayStore->get($key));
+        self::assertTrue($this->arrayStore->clear());
+        self::assertNull($this->arrayStore->get($key));
     }
 
     /* -------------------------------------------------
@@ -203,11 +203,11 @@ class ArrayCacheTest extends TestCase
         ];
 
         foreach ($items as $key => $value) {
-            $this->arrayCache->set($key, $value);
+            $this->arrayStore->set($key, $value);
         }
 
         $keys = array_keys($items);
-        $result = $this->arrayCache->getMultiple($keys);
+        $result = $this->arrayStore->getMultiple($keys);
 
         self::assertIsIterable($result);
         self::assertEquals($items, $result);
@@ -218,7 +218,7 @@ class ArrayCacheTest extends TestCase
         $keys = ['non_existent_key1', 'non_existent_key2'];
         $default = 'default_value';
 
-        $result = $this->arrayCache->getMultiple($keys, $default);
+        $result = $this->arrayStore->getMultiple($keys, $default);
 
         $expected = [
             'non_existent_key1' => $default,
@@ -231,12 +231,12 @@ class ArrayCacheTest extends TestCase
 
     public function testGetMultipleWithMixedExistingAndNonExistingKeys(): void
     {
-        $this->arrayCache->set('existing_key', 'existing_value');
+        $this->arrayStore->set('existing_key', 'existing_value');
 
         $keys = ['existing_key', 'non_existent_key'];
         $default = 'default_value';
 
-        $result = $this->arrayCache->getMultiple($keys, $default);
+        $result = $this->arrayStore->getMultiple($keys, $default);
 
         $expected = [
             'existing_key' => 'existing_value',
@@ -251,10 +251,10 @@ class ArrayCacheTest extends TestCase
     {
         $keys = new ArrayIterator(['test.key1', 'test.key2']);
 
-        $this->arrayCache->set('test.key1', 'test_value1');
-        $this->arrayCache->set('test.key2', 'test_value2');
+        $this->arrayStore->set('test.key1', 'test_value1');
+        $this->arrayStore->set('test.key2', 'test_value2');
 
-        $result = $this->arrayCache->getMultiple($keys);
+        $result = $this->arrayStore->getMultiple($keys);
 
         $expected = [
             'test.key1' => 'test_value1',
@@ -267,14 +267,14 @@ class ArrayCacheTest extends TestCase
     public function testGetMultipleWithValidAndInvalidKeys(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->arrayCache->getMultiple(['valid_key', '']);
+        $this->arrayStore->getMultiple(['valid_key', '']);
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testGetMultipleWithInvalidKeys(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->arrayCache->getMultiple([$invalidKey]);
+        $this->arrayStore->getMultiple([$invalidKey]);
     }
 
     /* -------------------------------------------------
@@ -290,10 +290,10 @@ class ArrayCacheTest extends TestCase
             'test.key3' => 'test_value3',
         ];
 
-        self::assertTrue($this->arrayCache->setMultiple($values));
+        self::assertTrue($this->arrayStore->setMultiple($values));
 
         foreach ($values as $key => $value) {
-            self::assertEquals($value, $this->arrayCache->get($key));
+            self::assertEquals($value, $this->arrayStore->get($key));
         }
     }
 
@@ -306,10 +306,10 @@ class ArrayCacheTest extends TestCase
 
         $expiry = time() + $ttl = 1;
 
-        self::assertTrue($this->arrayCache->setMultiple($values, $ttl));
+        self::assertTrue($this->arrayStore->setMultiple($values, $ttl));
 
         foreach ($values as $key => $value) {
-            self::assertEquals($expiry, $this->arrayCache->getStorage($key)['expiry']);
+            self::assertEquals($expiry, $this->arrayStore->getStorage($key)['expiry']);
         }
     }
 
@@ -321,10 +321,10 @@ class ArrayCacheTest extends TestCase
         ];
 
 
-        self::assertTrue($this->arrayCache->setMultiple($values));
+        self::assertTrue($this->arrayStore->setMultiple($values));
 
         foreach ($values as $key => $value) {
-            self::assertEquals(9999999999, $this->arrayCache->getStorage($key)['expiry']);
+            self::assertEquals(9999999999, $this->arrayStore->getStorage($key)['expiry']);
         }
     }
 
@@ -335,10 +335,10 @@ class ArrayCacheTest extends TestCase
             'test.key2' => 'test_value2',
         ];
 
-        self::assertTrue($this->arrayCache->setMultiple($values, 999999999999999999));
+        self::assertTrue($this->arrayStore->setMultiple($values, 999999999999999999));
 
         foreach ($values as $key => $value) {
-            self::assertEquals(9999999999, $this->arrayCache->getStorage($key)['expiry']);
+            self::assertEquals(9999999999, $this->arrayStore->getStorage($key)['expiry']);
         }
     }
 
@@ -349,10 +349,10 @@ class ArrayCacheTest extends TestCase
             'test.key2' => 'test_value2',
         ];
 
-        self::assertTrue($this->arrayCache->setMultiple($values, 0));
+        self::assertTrue($this->arrayStore->setMultiple($values, 0));
 
         foreach ($values as $key => $value) {
-            self::assertNull($this->arrayCache->get($key));
+            self::assertNull($this->arrayStore->get($key));
         }
     }
 
@@ -363,10 +363,10 @@ class ArrayCacheTest extends TestCase
             'test.key2' => 'test_value2',
         ];
 
-        self::assertTrue($this->arrayCache->setMultiple($values, -1));
+        self::assertTrue($this->arrayStore->setMultiple($values, -1));
 
         foreach ($values as $key => $value) {
-            self::assertNull($this->arrayCache->get($key));
+            self::assertNull($this->arrayStore->get($key));
         }
     }
 
@@ -377,10 +377,10 @@ class ArrayCacheTest extends TestCase
             'test.key2' => 'test_value2',
         ]);
 
-        self::assertTrue($this->arrayCache->setMultiple($values));
+        self::assertTrue($this->arrayStore->setMultiple($values));
 
         foreach ($values as $key => $value) {
-            self::assertEquals($value, $this->arrayCache->get($key));
+            self::assertEquals($value, $this->arrayStore->get($key));
         }
     }
 
@@ -393,7 +393,7 @@ class ArrayCacheTest extends TestCase
             '' => 'test_value2',
         ];
 
-        $this->arrayCache->setMultiple($values);
+        $this->arrayStore->setMultiple($values);
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
@@ -405,7 +405,7 @@ class ArrayCacheTest extends TestCase
             $invalidKey => 'value',
         ];
 
-        $this->arrayCache->setMultiple($values);
+        $this->arrayStore->setMultiple($values);
     }
 
     /* -------------------------------------------------
@@ -422,15 +422,15 @@ class ArrayCacheTest extends TestCase
         ];
 
         foreach ($items as $key => $value) {
-            $this->arrayCache->set($key, $value);
+            $this->arrayStore->set($key, $value);
         }
 
         $keys = array_keys($items);
 
-        self::assertTrue($this->arrayCache->deleteMultiple($keys));
+        self::assertTrue($this->arrayStore->deleteMultiple($keys));
 
         foreach ($keys as $key) {
-            self::assertNull($this->arrayCache->get($key));
+            self::assertNull($this->arrayStore->get($key));
         }
     }
 
@@ -438,17 +438,17 @@ class ArrayCacheTest extends TestCase
     {
         $keys = ['non_existent_key1', 'non_existent_key2'];
 
-        self::assertFalse($this->arrayCache->deleteMultiple($keys));
+        self::assertFalse($this->arrayStore->deleteMultiple($keys));
     }
 
     public function testDeleteMultipleWithMixedExistingAndNonExistingKeys(): void
     {
-        $this->arrayCache->set('existing_key', 'value');
+        $this->arrayStore->set('existing_key', 'value');
 
         $keys = ['non_existent_key', 'existing_key'];
 
-        self::assertFalse($this->arrayCache->deleteMultiple($keys));
-        self::assertNull($this->arrayCache->get('existing_key'));
+        self::assertFalse($this->arrayStore->deleteMultiple($keys));
+        self::assertNull($this->arrayStore->get('existing_key'));
     }
 
     public function testDeleteMultipleWithTraversable(): void
@@ -459,29 +459,29 @@ class ArrayCacheTest extends TestCase
         ];
 
         foreach ($items as $key => $value) {
-            $this->arrayCache->set($key, $value);
+            $this->arrayStore->set($key, $value);
         }
 
         $keys = new ArrayIterator(array_keys($items));
 
-        self::assertTrue($this->arrayCache->deleteMultiple($keys));
+        self::assertTrue($this->arrayStore->deleteMultiple($keys));
 
         foreach ($keys as $key) {
-            self::assertNull($this->arrayCache->get($key));
+            self::assertNull($this->arrayStore->get($key));
         }
     }
 
     public function testDeleteMultipleWithMixedValidAndInvalidKeys(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->arrayCache->deleteMultiple(['valid.key', '']);
+        $this->arrayStore->deleteMultiple(['valid.key', '']);
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testDeleteMultipleWithInvalidKeys(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->arrayCache->deleteMultiple([$invalidKey]);
+        $this->arrayStore->deleteMultiple([$invalidKey]);
     }
 
     /* -------------------------------------------------
@@ -494,13 +494,13 @@ class ArrayCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        $this->arrayCache->set($key, $value);
+        $this->arrayStore->set($key, $value);
 
-        self::assertTrue($this->arrayCache->has($key));
+        self::assertTrue($this->arrayStore->has($key));
 
-        $this->arrayCache->delete($key);
+        $this->arrayStore->delete($key);
 
-        self::assertFalse($this->arrayCache->has($key));
+        self::assertFalse($this->arrayStore->has($key));
     }
 
     public function testHasWithNullValue(): void
@@ -508,9 +508,9 @@ class ArrayCacheTest extends TestCase
         $key = 'test.key';
         $value = null;
 
-        $this->arrayCache->set($key, $value);
+        $this->arrayStore->set($key, $value);
 
-        self::assertTrue($this->arrayCache->has($key));
+        self::assertTrue($this->arrayStore->has($key));
     }
 
     public function testHasWithExpiredItem(): void
@@ -518,19 +518,19 @@ class ArrayCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        $this->arrayCache->set($key, $value, 1);
+        $this->arrayStore->set($key, $value, 1);
 
-        self::assertTrue($this->arrayCache->has($key));
+        self::assertTrue($this->arrayStore->has($key));
 
-        $this->arrayCache->delete($key);
+        $this->arrayStore->delete($key);
 
-        self::assertFalse($this->arrayCache->has($key));
+        self::assertFalse($this->arrayStore->has($key));
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testHasThrowsExceptionOnInvalidKey(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->arrayCache->has($invalidKey);
+        $this->arrayStore->has($invalidKey);
     }
 }

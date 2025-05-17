@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Zaphyr\Cache;
+namespace Zaphyr\Cache\Stores;
 
 use DateInterval;
 
 /**
  * @author merloxx <merloxx@zaphyr.org>
  */
-class ArrayCache extends AbstractCache
+class ArrayStore extends AbstractStore
 {
     /**
      * @var array<string, mixed>

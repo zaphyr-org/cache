@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Zaphyr\Cache\Contracts;
 
 use Closure;
-use Psr\SimpleCache\CacheInterface;
 use Zaphyr\Cache\Exceptions\CacheException;
 
 /**
@@ -14,12 +13,12 @@ use Zaphyr\Cache\Exceptions\CacheException;
 interface CacheManagerInterface
 {
     /**
-     * @param string|null $cache
+     * @param string|null $store
      *
-     * @throws CacheException if the cache name does not exist
+     * @throws CacheException if the cache store name does not exist
      * @return CacheInterface
      */
-    public function cache(?string $cache = null): CacheInterface;
+    public function cache(?string $store = null): CacheInterface;
 
     /**
      * @param string  $name
@@ -29,5 +28,5 @@ interface CacheManagerInterface
      * @throws CacheException if the cache name already exists
      * @return $this
      */
-    public function addCache(string $name, Closure $callback, bool $force = false): static;
+    public function addStore(string $name, Closure $callback, bool $force = false): static;
 }

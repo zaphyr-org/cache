@@ -6,9 +6,12 @@ namespace Zaphyr\Cache;
 
 use Closure;
 use Predis\Client;
-use Psr\SimpleCache\CacheInterface;
+use Zaphyr\Cache\Contracts\CacheInterface;
 use Zaphyr\Cache\Contracts\CacheManagerInterface;
 use Zaphyr\Cache\Exceptions\CacheException;
+use Zaphyr\Cache\Stores\ArrayStore;
+use Zaphyr\Cache\Stores\FileStore;
+use Zaphyr\Cache\Stores\RedisStore;
 
 /**
  * @author merloxx <merloxx@zaphyr.org>
@@ -18,17 +21,17 @@ class CacheManager implements CacheManagerInterface
     /**
      * @const string
      */
-    public const ARRAY_CACHE = 'array';
+    public const ARRAY_STORE = 'array';
 
     /**
      * @const string
      */
-    public const FILE_CACHE = 'file';
+    public const FILE_STORE = 'file';
 
     /**
      * @const string
      */
-    public const REDIS_CACHE = 'redis';
+    public const REDIS_STORE = 'redis';
 
     /**
      * @const array<string, string|int|false>
@@ -55,84 +58,92 @@ class CacheManager implements CacheManagerInterface
     /**
      * @var CacheInterface[]
      */
-    protected array $caches = [];
+    protected array $stores = [];
 
     /**
      * @var array<string, Closure>
      */
-    protected array $customCaches = [];
+    protected array $customStores = [];
 
     /**
-     * @param array<string, mixed> $cacheConfig
-     * @param string               $defaultCache
+     * @param array<string, mixed> $storeConfig
+     * @param string               $defaultStore
      */
-    public function __construct(protected array $cacheConfig, protected string $defaultCache = self::FILE_CACHE)
+    public function __construct(protected array $storeConfig, protected string $defaultStore = self::FILE_STORE)
     {
     }
 
     /**
      * {@inheritdoc}
      */
-    public function cache(?string $cache = null): CacheInterface
+    public function cache(?string $store = null): CacheInterface
     {
-        $cache ??= $this->defaultCache;
+        $store ??= $this->defaultStore;
 
-        if (!isset($this->caches[$cache])) {
-            $this->caches[$cache] = $this->createCache($cache);
+        if (!isset($this->stores[$store])) {
+            $this->stores[$store] = $this->createStore($store);
         }
 
-        return $this->caches[$cache];
+        return $this->stores[$store];
     }
 
     /**
      * {@inheritdoc}
      */
-    public function addCache(string $name, Closure $callback, bool $force = false): static
+    public function addStore(string $name, Closure $callback, bool $force = false): static
     {
-        $cacheTypes = [self::ARRAY_CACHE, self::FILE_CACHE, self::REDIS_CACHE];
+        $storeTypes = [self::ARRAY_STORE, self::FILE_STORE, self::REDIS_STORE];
 
-        if ((!$force && isset($this->customCaches[$name])) || in_array($name, $cacheTypes)) {
-            throw new CacheException('Cache with name "' . $name . '" already exists.');
+        if ((!$force && isset($this->customStores[$name])) || in_array($name, $storeTypes)) {
+            throw new CacheException('Cache store with name "' . $name . '" already exists.');
         }
 
-        $this->customCaches[$name] = $callback;
+        $this->customStores[$name] = $callback;
 
         return $this;
     }
 
     /**
-     * @param string $cache
+     * @param string $store
      *
      * @throws CacheException if the cache name does not exist
      * @return CacheInterface
      */
-    protected function createCache(string $cache): CacheInterface
+    protected function createStore(string $store): CacheInterface
     {
-        return match ($cache) {
-            self::ARRAY_CACHE => new ArrayCache(),
-            self::FILE_CACHE => $this->createFileCache(),
-            self::REDIS_CACHE => $this->createRedisCache(),
-            default => $this->createCustomCache($cache),
+        return match ($store) {
+            self::ARRAY_STORE => $this->createArrayStore(),
+            self::FILE_STORE => $this->createFileStore(),
+            self::REDIS_STORE => $this->createRedisStore(),
+            default => $this->createCustomStore($store),
         };
     }
 
     /**
      * @return CacheInterface
      */
-    protected function createFileCache(): CacheInterface
+    protected function createArrayStore(): CacheInterface
     {
-        $path = $this->cacheConfig[self::FILE_CACHE]['path'] ?? sys_get_temp_dir();
-        $permissions = $this->cacheConfig[self::FILE_CACHE]['permissions'] ?? null;
-
-        return new FileCache($path, $permissions);
+        return new Cache(new ArrayStore());
     }
 
     /**
      * @return CacheInterface
      */
-    protected function createRedisCache(): CacheInterface
+    protected function createFileStore(): CacheInterface
     {
-        $config = $this->cacheConfig[self::REDIS_CACHE] ?? [];
+        $path = $this->storeConfig[self::FILE_STORE]['path'] ?? sys_get_temp_dir();
+        $permissions = $this->storeConfig[self::FILE_STORE]['permissions'] ?? null;
+
+        return new Cache(new FileStore($path, $permissions));
+    }
+
+    /**
+     * @return CacheInterface
+     */
+    protected function createRedisStore(): CacheInterface
+    {
+        $config = $this->storeConfig[self::REDIS_STORE] ?? [];
 
         $parameters = array_merge(
             self::REDIS_DEFAULT_CONFIG,
@@ -144,21 +155,21 @@ class CacheManager implements CacheManagerInterface
 
         $prefix = $config['prefix'] ?? 'zaphyr_';
 
-        return new RedisCache(new Client($parameters), $prefix);
+        return new Cache(new RedisStore(new Client($parameters), $prefix));
     }
 
     /**
-     * @param string $cache
+     * @param string $name
      *
-     * @throws CacheException if the cache name does not exist
+     * @throws CacheException if the cache store name does not exist
      * @return CacheInterface
      */
-    protected function createCustomCache(string $cache): CacheInterface
+    protected function createCustomStore(string $name): CacheInterface
     {
-        if (!isset($this->customCaches[$cache])) {
-            throw new CacheException('Cache with name "' . $cache . '" does not exist.');
+        if (!isset($this->customStores[$name])) {
+            throw new CacheException('Cache store with name "' . $name . '" does not exist.');
         }
 
-        return $this->customCaches[$cache]();
+        return new Cache($this->customStores[$name]());
     }
 }

@@ -12,9 +12,9 @@ use PHPUnit\Framework\TestCase;
 use Predis\Client;
 use Predis\ClientInterface;
 use Psr\SimpleCache\InvalidArgumentException;
-use Zaphyr\Cache\RedisCache;
+use Zaphyr\Cache\Stores\RedisStore;
 
-class RedisCacheTest extends TestCase
+class RedisStoreTest extends TestCase
 {
     /**
      * @var Client&MockObject
@@ -22,20 +22,20 @@ class RedisCacheTest extends TestCase
     protected ClientInterface&MockObject $clientMock;
 
     /**
-     * @var RedisCache
+     * @var RedisStore
      */
-    protected RedisCache $redisCache;
+    protected RedisStore $redisStore;
 
     protected function setUp(): void
     {
         $this->clientMock = $this->createMock(ClientInterface::class);
 
-        $this->redisCache = new RedisCache($this->clientMock);
+        $this->redisStore = new RedisStore($this->clientMock);
     }
 
     protected function tearDown(): void
     {
-        unset($this->clientMock, $this->redisCache);
+        unset($this->clientMock, $this->redisStore);
     }
 
     /* -------------------------------------------------
@@ -60,8 +60,8 @@ class RedisCacheTest extends TestCase
                 };
             });
 
-        self::assertTrue($this->redisCache->set($key, $value));
-        self::assertEquals($value, $this->redisCache->get($key));
+        self::assertTrue($this->redisStore->set($key, $value));
+        self::assertEquals($value, $this->redisStore->get($key));
     }
 
     public function testGetSetWithPrefix(): void
@@ -82,10 +82,10 @@ class RedisCacheTest extends TestCase
                 };
             });
 
-        $redisCache = new RedisCache($this->clientMock, $prefix);
+        $redisStore = new RedisStore($this->clientMock, $prefix);
 
-        self::assertTrue($redisCache->set($key, $value));
-        self::assertEquals($value, $redisCache->get($key));
+        self::assertTrue($redisStore->set($key, $value));
+        self::assertEquals($value, $redisStore->get($key));
     }
 
     /* -------------------------------------------------
@@ -104,7 +104,7 @@ class RedisCacheTest extends TestCase
             ->with('get', [$key])
             ->willReturn(null);
 
-        self::assertNull($this->redisCache->get($key, $defaultValue));
+        self::assertNull($this->redisStore->get($key, $defaultValue));
     }
 
     public function testGetWithDefaultValue(): void
@@ -118,14 +118,14 @@ class RedisCacheTest extends TestCase
             ->with('get', [$key])
             ->willReturn(null);
 
-        self::assertEquals($defaultValue, $this->redisCache->get($key, $defaultValue));
+        self::assertEquals($defaultValue, $this->redisStore->get($key, $defaultValue));
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testGetThrowsExceptionOnInvalidKey(string $illegalKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->redisCache->get($illegalKey);
+        $this->redisStore->get($illegalKey);
     }
 
     /* -------------------------------------------------
@@ -146,7 +146,7 @@ class RedisCacheTest extends TestCase
             ->with('setex', [$key, 3600, $serializedValue])
             ->willReturn(true);
 
-        self::assertTrue($this->redisCache->set($key, $value, $ttl));
+        self::assertTrue($this->redisStore->set($key, $value, $ttl));
     }
 
     public function testSetWIthTtlInteger(): void
@@ -162,7 +162,7 @@ class RedisCacheTest extends TestCase
             ->with('setex', [$key, $ttl, $serializedValue])
             ->willReturn(true);
 
-        self::assertTrue($this->redisCache->set($key, $value, $ttl));
+        self::assertTrue($this->redisStore->set($key, $value, $ttl));
     }
 
     public function testSetWithZeroTtlRemovesKey(): void
@@ -177,7 +177,7 @@ class RedisCacheTest extends TestCase
             ->with('del', [$key])
             ->willReturn(true);
 
-        self::assertFalse($this->redisCache->set($key, $value, $ttl));
+        self::assertFalse($this->redisStore->set($key, $value, $ttl));
     }
 
     public function testSetWithNegativeTtlRemovesKey(): void
@@ -192,14 +192,14 @@ class RedisCacheTest extends TestCase
             ->with('del', [$key])
             ->willReturn(true);
 
-        self::assertFalse($this->redisCache->set($key, $value, $ttl));
+        self::assertFalse($this->redisStore->set($key, $value, $ttl));
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testSetThrowsExceptionOnInvalidKey(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->redisCache->set($invalidKey, 'value');
+        $this->redisStore->set($invalidKey, 'value');
     }
 
     /* -------------------------------------------------
@@ -217,7 +217,7 @@ class RedisCacheTest extends TestCase
             ->with('del', [$key])
             ->willReturn(true);
 
-        self::assertTrue($this->redisCache->delete($key));
+        self::assertTrue($this->redisStore->delete($key));
     }
 
     public function testDeleteReturnsFalseOnFailure(): void
@@ -230,7 +230,7 @@ class RedisCacheTest extends TestCase
             ->with('del', [$key])
             ->willReturn(false);
 
-        self::assertFalse($this->redisCache->delete($key));
+        self::assertFalse($this->redisStore->delete($key));
     }
 
     /* -------------------------------------------------
@@ -246,7 +246,7 @@ class RedisCacheTest extends TestCase
             ->with('flushdb')
             ->willReturn(true);
 
-        self::assertTrue($this->redisCache->clear());
+        self::assertTrue($this->redisStore->clear());
     }
 
     /* -------------------------------------------------
@@ -277,7 +277,7 @@ class RedisCacheTest extends TestCase
 
         $keys = array_keys($items);
 
-        self::assertEquals($items, $this->redisCache->getMultiple($keys));
+        self::assertEquals($items, $this->redisStore->getMultiple($keys));
     }
 
     public function testGetMultipleWithDefaultValue(): void
@@ -303,7 +303,7 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertEquals($items, $this->redisCache->getMultiple($keys, $default));
+        self::assertEquals($items, $this->redisStore->getMultiple($keys, $default));
     }
 
     public function testGetMultipleWithMixedExistingAndNonExistingKeys(): void
@@ -329,7 +329,7 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertEquals($items, $this->redisCache->getMultiple($keys, $default));
+        self::assertEquals($items, $this->redisStore->getMultiple($keys, $default));
     }
 
     public function testGetMultipleWithTraversable(): void
@@ -353,20 +353,20 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertEquals($items, $this->redisCache->getMultiple($keys));
+        self::assertEquals($items, $this->redisStore->getMultiple($keys));
     }
 
     public function testGetMultipleWithValidAndInvalidKeysThrowsException(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->redisCache->getMultiple(['valid_key', '']);
+        $this->redisStore->getMultiple(['valid_key', '']);
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testGetMultipleWithInvalidKeysThrowsException(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->redisCache->getMultiple([$invalidKey]);
+        $this->redisStore->getMultiple([$invalidKey]);
     }
 
     /* -------------------------------------------------
@@ -396,7 +396,7 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertTrue($this->redisCache->setMultiple($items));
+        self::assertTrue($this->redisStore->setMultiple($items));
     }
 
     public function testSetMultipleWithTtl(): void
@@ -421,7 +421,7 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertTrue($this->redisCache->setMultiple($items, $ttl));
+        self::assertTrue($this->redisStore->setMultiple($items, $ttl));
     }
 
     public function testSetMultipleWithZeroTtlRemovesValues(): void
@@ -445,7 +445,7 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertFalse($this->redisCache->setMultiple($items, $ttl));
+        self::assertFalse($this->redisStore->setMultiple($items, $ttl));
     }
 
     public function testSetMultipleWithNegativeTtlRemovesValues(): void
@@ -469,7 +469,7 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertFalse($this->redisCache->setMultiple($items, $ttl));
+        self::assertFalse($this->redisStore->setMultiple($items, $ttl));
     }
 
     public function testSetMultipleWithTraversable(): void
@@ -493,13 +493,13 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertTrue($this->redisCache->setMultiple($items));
+        self::assertTrue($this->redisStore->setMultiple($items));
     }
 
     public function testSetMultipleWithMixedValidAndInvalidKeysThrowsException(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->redisCache->setMultiple(['valid_key' => 'value', '' => 'value']);
+        $this->redisStore->setMultiple(['valid_key' => 'value', '' => 'value']);
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
@@ -511,7 +511,7 @@ class RedisCacheTest extends TestCase
             $invalidKey => 'value',
         ];
 
-        $this->redisCache->setMultiple($values);
+        $this->redisStore->setMultiple($values);
     }
 
     /* -------------------------------------------------
@@ -542,7 +542,7 @@ class RedisCacheTest extends TestCase
 
         $keys = array_keys($items);
 
-        self::assertTrue($this->redisCache->deleteMultiple($keys));
+        self::assertTrue($this->redisStore->deleteMultiple($keys));
     }
 
     public function testDeleteMultipleWithNonExistentKeys(): void
@@ -560,7 +560,7 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertFalse($this->redisCache->deleteMultiple($keys));
+        self::assertFalse($this->redisStore->deleteMultiple($keys));
     }
 
     public function testDeleteMultipleWithMixedExistingAndNonExistingKeys(): void
@@ -580,7 +580,7 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertFalse($this->redisCache->deleteMultiple($keys));
+        self::assertFalse($this->redisStore->deleteMultiple($keys));
     }
 
     public function testDeleteMultipleWithTraversable(): void
@@ -604,20 +604,20 @@ class RedisCacheTest extends TestCase
                 return null;
             });
 
-        self::assertTrue($this->redisCache->deleteMultiple($keys));
+        self::assertTrue($this->redisStore->deleteMultiple($keys));
     }
 
     public function testDeleteMultipleWithValidAndInvalidKeysThrowsException(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->redisCache->deleteMultiple(['valid_key', '']);
+        $this->redisStore->deleteMultiple(['valid_key', '']);
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testDeleteMultipleWithInvalidKeysThrowsException(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->redisCache->deleteMultiple([$invalidKey]);
+        $this->redisStore->deleteMultiple([$invalidKey]);
     }
 
     /* -------------------------------------------------
@@ -634,7 +634,7 @@ class RedisCacheTest extends TestCase
             ->with('exists', [$key])
             ->willReturn(true);
 
-        self::assertTrue($this->redisCache->has($key));
+        self::assertTrue($this->redisStore->has($key));
     }
 
     public function testHasReturnsFalseOnNonExistentKey(): void
@@ -646,7 +646,7 @@ class RedisCacheTest extends TestCase
             ->with('exists', [$key])
             ->willReturn(false);
 
-        self::assertFalse($this->redisCache->has($key));
+        self::assertFalse($this->redisStore->has($key));
     }
 
     public function testHasWithNullValue(): void
@@ -666,15 +666,15 @@ class RedisCacheTest extends TestCase
                 };
             });
 
-        $this->redisCache->set($key, $value);
+        $this->redisStore->set($key, $value);
 
-        self::assertTrue($this->redisCache->has($key));
+        self::assertTrue($this->redisStore->has($key));
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testHasThrowsExceptionOnInvalidKey(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->redisCache->has($invalidKey);
+        $this->redisStore->has($invalidKey);
     }
 }

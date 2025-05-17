@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Zaphyr\Cache;
+namespace Zaphyr\Cache\Stores;
 
 use DateInterval;
 use DateTime;
@@ -12,7 +12,7 @@ use Zaphyr\Cache\Exceptions\InvalidArgumentException;
 /**
  * @author merloxx <merloxx@zaphyr.org>
  */
-abstract class AbstractCache implements CacheInterface
+abstract class AbstractStore implements CacheInterface
 {
     /**
      * @param string $key

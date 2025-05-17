@@ -9,15 +9,15 @@ use DateInterval;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
 use Psr\SimpleCache\InvalidArgumentException;
-use Zaphyr\Cache\FileCache;
+use Zaphyr\Cache\Stores\FileStore;
 use Zaphyr\Utils\File;
 
-class FileCacheTest extends TestCase
+class FileStoreTest extends TestCase
 {
     /**
-     * @var FileCache
+     * @var FileStore
      */
-    protected FileCache $fileCache;
+    protected FileStore $fileStore;
 
     /**
      * @var string
@@ -26,14 +26,14 @@ class FileCacheTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->fileCache = new FileCache($this->path);
+        $this->fileStore = new FileStore($this->path);
     }
 
     protected function tearDown(): void
     {
         File::deleteDirectory($this->path);
 
-        unset($this->fileCache);
+        unset($this->fileStore);
     }
 
     protected function getPath(string $key): string
@@ -64,9 +64,9 @@ class FileCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        $this->fileCache->set($key, $value);
+        $this->fileStore->set($key, $value);
 
-        self::assertEquals($value, $this->fileCache->get($key));
+        self::assertEquals($value, $this->fileStore->get($key));
     }
 
     /* -------------------------------------------------
@@ -76,7 +76,7 @@ class FileCacheTest extends TestCase
 
     public function testGetDefaultValueIsNull(): void
     {
-        self::assertNull($this->fileCache->get('non_existent_key'));
+        self::assertNull($this->fileStore->get('non_existent_key'));
     }
 
     public function testGetWithDefaultValue(): void
@@ -84,14 +84,14 @@ class FileCacheTest extends TestCase
         $key = 'non_existent_key';
         $defaultValue = 'default_value';
 
-        self::assertEquals($defaultValue, $this->fileCache->get($key, $defaultValue));
+        self::assertEquals($defaultValue, $this->fileStore->get($key, $defaultValue));
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testGetThrowsExceptionOnInvalidKey(string $illegalKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->fileCache->get($illegalKey);
+        $this->fileStore->get($illegalKey);
     }
 
     /* -------------------------------------------------
@@ -105,12 +105,12 @@ class FileCacheTest extends TestCase
         $value = 'test_value';
         $expiry = new DateInterval('PT1S');
 
-        self::assertTrue($this->fileCache->set($key, $value, $expiry));
-        self::assertEquals($value, $this->fileCache->get($key));
+        self::assertTrue($this->fileStore->set($key, $value, $expiry));
+        self::assertEquals($value, $this->fileStore->get($key));
 
-        $this->fileCache->delete($key);
+        $this->fileStore->delete($key);
 
-        self::assertNull($this->fileCache->get($key));
+        self::assertNull($this->fileStore->get($key));
     }
 
     public function testSetWithTtlInteger(): void
@@ -119,12 +119,12 @@ class FileCacheTest extends TestCase
         $value = 'test_value';
         $expiry = 1;
 
-        self::assertTrue($this->fileCache->set($key, $value, $expiry));
-        self::assertEquals($value, $this->fileCache->get($key));
+        self::assertTrue($this->fileStore->set($key, $value, $expiry));
+        self::assertEquals($value, $this->fileStore->get($key));
 
-        $this->fileCache->delete($key);
+        $this->fileStore->delete($key);
 
-        self::assertNull($this->fileCache->get($key));
+        self::assertNull($this->fileStore->get($key));
     }
 
     public function testSetWithNullTtlLastsForever(): void
@@ -132,7 +132,7 @@ class FileCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        self::assertTrue($this->fileCache->set($key, $value));
+        self::assertTrue($this->fileStore->set($key, $value));
 
         $contents = $this->getContentsByKey($key);
 
@@ -144,7 +144,7 @@ class FileCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        self::assertTrue($this->fileCache->set($key, $value, 999999999999999999));
+        self::assertTrue($this->fileStore->set($key, $value, 999999999999999999));
 
         $contents = $this->getContentsByKey($key);
 
@@ -156,8 +156,8 @@ class FileCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        self::assertTrue($this->fileCache->set($key, $value, 0));
-        self::assertNull($this->fileCache->get($key));
+        self::assertTrue($this->fileStore->set($key, $value, 0));
+        self::assertNull($this->fileStore->get($key));
     }
 
     public function testSetWithNegativeTtlRemovesValue(): void
@@ -165,8 +165,8 @@ class FileCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        self::assertTrue($this->fileCache->set($key, $value, -1));
-        self::assertNull($this->fileCache->get($key));
+        self::assertTrue($this->fileStore->set($key, $value, -1));
+        self::assertNull($this->fileStore->get($key));
     }
 
     public function testSetFilePermissions(): void
@@ -175,8 +175,8 @@ class FileCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        $fileCache = new FileCache($this->path, $permissions);
-        $fileCache->set($key, $value);
+        $fileStore = new FileStore($this->path, $permissions);
+        $fileStore->set($key, $value);
 
         $path = $this->getPath($key);
 
@@ -188,7 +188,7 @@ class FileCacheTest extends TestCase
     public function testSetThrowsExceptionOnInvalidKey(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->fileCache->set($invalidKey, 'value');
+        $this->fileStore->set($invalidKey, 'value');
     }
 
     /* -------------------------------------------------
@@ -200,18 +200,18 @@ class FileCacheTest extends TestCase
     {
         $key = 'test.key';
         $value = 'test_value';
-        $this->fileCache->set($key, $value);
+        $this->fileStore->set($key, $value);
 
-        self::assertEquals($value, $this->fileCache->get($key));
-        self::assertTrue($this->fileCache->delete($key));
-        self::assertNull($this->fileCache->get($key));
+        self::assertEquals($value, $this->fileStore->get($key));
+        self::assertTrue($this->fileStore->delete($key));
+        self::assertNull($this->fileStore->get($key));
     }
 
     public function testDeleteReturnsFalseOnFailure(): void
     {
         $key = 'non_existent_key';
 
-        self::assertFalse($this->fileCache->delete($key));
+        self::assertFalse($this->fileStore->delete($key));
     }
 
     /* -------------------------------------------------
@@ -223,10 +223,10 @@ class FileCacheTest extends TestCase
     {
         $key = 'test.key';
         $value = 'test_value';
-        $this->fileCache->set($key, $value);
+        $this->fileStore->set($key, $value);
 
-        self::assertEquals($value, $this->fileCache->get($key));
-        self::assertTrue($this->fileCache->clear());
+        self::assertEquals($value, $this->fileStore->get($key));
+        self::assertTrue($this->fileStore->clear());
         self::assertDirectoryDoesNotExist(dirname($this->getPath($key), 2));
     }
 
@@ -244,11 +244,11 @@ class FileCacheTest extends TestCase
         ];
 
         foreach ($items as $key => $value) {
-            $this->fileCache->set($key, $value);
+            $this->fileStore->set($key, $value);
         }
 
         $keys = array_keys($items);
-        $result = $this->fileCache->getMultiple($keys);
+        $result = $this->fileStore->getMultiple($keys);
 
         self::assertIsIterable($result);
         self::assertEquals($items, $result);
@@ -259,7 +259,7 @@ class FileCacheTest extends TestCase
         $keys = ['non_existent_key1', 'non_existent_key2'];
         $default = 'default_value';
 
-        $result = $this->fileCache->getMultiple($keys, $default);
+        $result = $this->fileStore->getMultiple($keys, $default);
 
         $expected = [
             'non_existent_key1' => $default,
@@ -272,12 +272,12 @@ class FileCacheTest extends TestCase
 
     public function testGetMultipleWithMixedExistingAndNonExistingKeys(): void
     {
-        $this->fileCache->set('existing_key', 'existing_value');
+        $this->fileStore->set('existing_key', 'existing_value');
 
         $keys = ['existing_key', 'non_existent_key'];
         $default = 'default_value';
 
-        $result = $this->fileCache->getMultiple($keys, $default);
+        $result = $this->fileStore->getMultiple($keys, $default);
 
         $expected = [
             'existing_key' => 'existing_value',
@@ -292,10 +292,10 @@ class FileCacheTest extends TestCase
     {
         $keys = new ArrayIterator(['test.key1', 'test.key2']);
 
-        $this->fileCache->set('test.key1', 'test_value1');
-        $this->fileCache->set('test.key2', 'test_value2');
+        $this->fileStore->set('test.key1', 'test_value1');
+        $this->fileStore->set('test.key2', 'test_value2');
 
-        $result = $this->fileCache->getMultiple($keys);
+        $result = $this->fileStore->getMultiple($keys);
 
         $expected = [
             'test.key1' => 'test_value1',
@@ -308,14 +308,14 @@ class FileCacheTest extends TestCase
     public function testGetMultipleWithValidAndInvalidKeys(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->fileCache->getMultiple(['valid_key', '']);
+        $this->fileStore->getMultiple(['valid_key', '']);
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testGetMultipleWithInvalidKeys(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->fileCache->getMultiple([$invalidKey]);
+        $this->fileStore->getMultiple([$invalidKey]);
     }
 
     /* -------------------------------------------------
@@ -331,10 +331,10 @@ class FileCacheTest extends TestCase
             'test.key3' => 'test_value3',
         ];
 
-        self::assertTrue($this->fileCache->setMultiple($values));
+        self::assertTrue($this->fileStore->setMultiple($values));
 
         foreach ($values as $key => $value) {
-            self::assertEquals($value, $this->fileCache->get($key));
+            self::assertEquals($value, $this->fileStore->get($key));
         }
     }
 
@@ -347,7 +347,7 @@ class FileCacheTest extends TestCase
 
         $expiry = time() + $ttl = 1;
 
-        self::assertTrue($this->fileCache->setMultiple($values, $ttl));
+        self::assertTrue($this->fileStore->setMultiple($values, $ttl));
 
         foreach ($values as $key => $value) {
             self::assertEquals($expiry, $this->getContentsByKey($key)['expiry']);
@@ -362,7 +362,7 @@ class FileCacheTest extends TestCase
         ];
 
 
-        self::assertTrue($this->fileCache->setMultiple($values));
+        self::assertTrue($this->fileStore->setMultiple($values));
 
         foreach ($values as $key => $value) {
             self::assertEquals(9999999999, $this->getContentsByKey($key)['expiry']);
@@ -376,7 +376,7 @@ class FileCacheTest extends TestCase
             'test.key2' => 'test_value2',
         ];
 
-        self::assertTrue($this->fileCache->setMultiple($values, 999999999999999999));
+        self::assertTrue($this->fileStore->setMultiple($values, 999999999999999999));
 
         foreach ($values as $key => $value) {
             self::assertEquals(9999999999, $this->getContentsByKey($key)['expiry']);
@@ -390,10 +390,10 @@ class FileCacheTest extends TestCase
             'test.key2' => 'test_value2',
         ];
 
-        self::assertTrue($this->fileCache->setMultiple($values, 0));
+        self::assertTrue($this->fileStore->setMultiple($values, 0));
 
         foreach ($values as $key => $value) {
-            self::assertNull($this->fileCache->get($key));
+            self::assertNull($this->fileStore->get($key));
         }
     }
 
@@ -404,10 +404,10 @@ class FileCacheTest extends TestCase
             'test.key2' => 'test_value2',
         ];
 
-        self::assertTrue($this->fileCache->setMultiple($values, -1));
+        self::assertTrue($this->fileStore->setMultiple($values, -1));
 
         foreach ($values as $key => $value) {
-            self::assertNull($this->fileCache->get($key));
+            self::assertNull($this->fileStore->get($key));
         }
     }
 
@@ -418,10 +418,10 @@ class FileCacheTest extends TestCase
             'test.key2' => 'test_value2',
         ]);
 
-        self::assertTrue($this->fileCache->setMultiple($values));
+        self::assertTrue($this->fileStore->setMultiple($values));
 
         foreach ($values as $key => $value) {
-            self::assertEquals($value, $this->fileCache->get($key));
+            self::assertEquals($value, $this->fileStore->get($key));
         }
     }
 
@@ -434,7 +434,7 @@ class FileCacheTest extends TestCase
             '' => 'test_value2',
         ];
 
-        $this->fileCache->setMultiple($values);
+        $this->fileStore->setMultiple($values);
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
@@ -446,7 +446,7 @@ class FileCacheTest extends TestCase
             $invalidKey => 'value',
         ];
 
-        $this->fileCache->setMultiple($values);
+        $this->fileStore->setMultiple($values);
     }
 
     /* -------------------------------------------------
@@ -463,15 +463,15 @@ class FileCacheTest extends TestCase
         ];
 
         foreach ($items as $key => $value) {
-            $this->fileCache->set($key, $value);
+            $this->fileStore->set($key, $value);
         }
 
         $keys = array_keys($items);
 
-        self::assertTrue($this->fileCache->deleteMultiple($keys));
+        self::assertTrue($this->fileStore->deleteMultiple($keys));
 
         foreach ($keys as $key) {
-            self::assertNull($this->fileCache->get($key));
+            self::assertNull($this->fileStore->get($key));
         }
     }
 
@@ -479,17 +479,17 @@ class FileCacheTest extends TestCase
     {
         $keys = ['non_existent_key1', 'non_existent_key2'];
 
-        self::assertFalse($this->fileCache->deleteMultiple($keys));
+        self::assertFalse($this->fileStore->deleteMultiple($keys));
     }
 
     public function testDeleteMultipleWithMixedExistingAndNonExistingKeys(): void
     {
-        $this->fileCache->set('existing_key', 'value');
+        $this->fileStore->set('existing_key', 'value');
 
         $keys = ['non_existent_key', 'existing_key'];
 
-        self::assertFalse($this->fileCache->deleteMultiple($keys));
-        self::assertNull($this->fileCache->get('existing_key'));
+        self::assertFalse($this->fileStore->deleteMultiple($keys));
+        self::assertNull($this->fileStore->get('existing_key'));
     }
 
     public function testDeleteMultipleWithTraversable(): void
@@ -500,29 +500,29 @@ class FileCacheTest extends TestCase
         ];
 
         foreach ($items as $key => $value) {
-            $this->fileCache->set($key, $value);
+            $this->fileStore->set($key, $value);
         }
 
         $keys = new ArrayIterator(array_keys($items));
 
-        self::assertTrue($this->fileCache->deleteMultiple($keys));
+        self::assertTrue($this->fileStore->deleteMultiple($keys));
 
         foreach ($keys as $key) {
-            self::assertNull($this->fileCache->get($key));
+            self::assertNull($this->fileStore->get($key));
         }
     }
 
     public function testDeleteMultipleWithMixedValidAndInvalidKeys(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->fileCache->deleteMultiple(['valid.key', '']);
+        $this->fileStore->deleteMultiple(['valid.key', '']);
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testDeleteMultipleWithInvalidKeys(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->fileCache->deleteMultiple([$invalidKey]);
+        $this->fileStore->deleteMultiple([$invalidKey]);
     }
 
     /* -------------------------------------------------
@@ -535,13 +535,13 @@ class FileCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        $this->fileCache->set($key, $value);
+        $this->fileStore->set($key, $value);
 
-        self::assertTrue($this->fileCache->has($key));
+        self::assertTrue($this->fileStore->has($key));
 
-        $this->fileCache->delete($key);
+        $this->fileStore->delete($key);
 
-        self::assertFalse($this->fileCache->has($key));
+        self::assertFalse($this->fileStore->has($key));
     }
 
     public function testHasWithNullValue(): void
@@ -549,9 +549,9 @@ class FileCacheTest extends TestCase
         $key = 'test.key';
         $value = null;
 
-        $this->fileCache->set($key, $value);
+        $this->fileStore->set($key, $value);
 
-        self::assertTrue($this->fileCache->has($key));
+        self::assertTrue($this->fileStore->has($key));
     }
 
     public function testHasWithExpiredItem(): void
@@ -559,19 +559,19 @@ class FileCacheTest extends TestCase
         $key = 'test.key';
         $value = 'test_value';
 
-        $this->fileCache->set($key, $value, 1);
+        $this->fileStore->set($key, $value, 1);
 
-        self::assertTrue($this->fileCache->has($key));
+        self::assertTrue($this->fileStore->has($key));
 
-        $this->fileCache->delete($key);
+        $this->fileStore->delete($key);
 
-        self::assertFalse($this->fileCache->has($key));
+        self::assertFalse($this->fileStore->has($key));
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testHasThrowsExceptionOnInvalidKey(string $invalidKey): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->fileCache->has($invalidKey);
+        $this->fileStore->has($invalidKey);
     }
 }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Zaphyr\Cache;
+namespace Zaphyr\Cache\Stores;
 
 use DateInterval;
 use Predis\ClientInterface;
@@ -11,7 +11,7 @@ use Zaphyr\Cache\Exceptions\InvalidArgumentException;
 /**
  * @author merloxx <merloxx@zaphyr.org>
  */
-class RedisCache extends AbstractCache
+class RedisStore extends AbstractStore
 {
     /**
      * @param ClientInterface $redis

@@ -6,10 +6,11 @@ namespace Zaphyr\CacheTests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Psr\SimpleCache\CacheException;
-use Zaphyr\Cache\ArrayCache;
+use Psr\SimpleCache\CacheInterface;
 use Zaphyr\Cache\CacheManager;
-use Zaphyr\Cache\FileCache;
-use Zaphyr\Cache\RedisCache;
+use Zaphyr\Cache\Stores\ArrayStore;
+use Zaphyr\Cache\Stores\FileStore;
+use Zaphyr\Cache\Stores\RedisStore;
 
 class CacheManagerTest extends TestCase
 {
@@ -21,7 +22,7 @@ class CacheManagerTest extends TestCase
     protected function setUp(): void
     {
         $this->cacheManager = new CacheManager([
-            CacheManager::FILE_CACHE => [
+            CacheManager::FILE_STORE => [
                 'path' => __DIR__,
             ],
         ]);
@@ -37,16 +38,21 @@ class CacheManagerTest extends TestCase
      * -------------------------------------------------
      */
 
-    public function testCacheReturnsDefaultCache(): void
+    public function testCacheIsPsrInstance(): void
     {
-        self::assertInstanceOf(FileCache::class, $this->cacheManager->cache());
+        self::assertInstanceOf(CacheInterface::class, $this->cacheManager->cache());
     }
 
-    public function testCacheWithChangedDefaultCache(): void
+    public function testCacheReturnsDefaultStore(): void
     {
-        $this->cacheManager = new CacheManager([], CacheManager::ARRAY_CACHE);
+        self::assertInstanceOf(FileStore::class, $this->cacheManager->cache()->getStore());
+    }
 
-        self::assertInstanceOf(ArrayCache::class, $this->cacheManager->cache());
+    public function testCacheWithChangedDefaultStore(): void
+    {
+        $this->cacheManager = new CacheManager([], CacheManager::ARRAY_STORE);
+
+        self::assertInstanceOf(ArrayStore::class, $this->cacheManager->cache()->getStore());
     }
 
     public function testCacheReturnsSameInstance(): void
@@ -57,31 +63,31 @@ class CacheManagerTest extends TestCase
         self::assertSame($cache1, $cache2);
     }
 
-    public function testCacheReturnsArrayCache(): void
+    public function testCacheReturnsArrayStore(): void
     {
         self::assertInstanceOf(
-            ArrayCache::class,
-            $this->cacheManager->cache(CacheManager::ARRAY_CACHE)
+            ArrayStore::class,
+            $this->cacheManager->cache(CacheManager::ARRAY_STORE)->getStore()
         );
     }
 
-    public function testCacheReturnsFileCache(): void
+    public function testCacheReturnsFileStore(): void
     {
         self::assertInstanceOf(
-            FileCache::class,
-            $this->cacheManager->cache(CacheManager::FILE_CACHE)
+            FileStore::class,
+            $this->cacheManager->cache(CacheManager::FILE_STORE)->getStore()
         );
     }
 
-    public function testCacheReturnsRedisCache(): void
+    public function testCacheReturnsRedisStore(): void
     {
         self::assertInstanceOf(
-            RedisCache::class,
-            $this->cacheManager->cache(CacheManager::REDIS_CACHE)
+            RedisStore::class,
+            $this->cacheManager->cache(CacheManager::REDIS_STORE)->getStore()
         );
     }
 
-    public function testCacheThrowsExceptionIfCacheDoesNotExist(): void
+    public function testCacheThrowsExceptionIfStoreDoesNotExist(): void
     {
         $this->expectException(CacheException::class);
 
@@ -89,45 +95,43 @@ class CacheManagerTest extends TestCase
     }
 
     /* -------------------------------------------------
-     * ADD CACHE
+     * ADD STORE
      * -------------------------------------------------
      */
 
-    public function testAddCache(): void
+    public function testAddStore(): void
     {
-        $this->cacheManager->addCache('custom', fn() => new FileCache(__DIR__));
+        $this->cacheManager->addStore('custom', fn() => new FileStore(__DIR__));
 
-        $cache = $this->cacheManager->cache('custom');
-
-        self::assertInstanceOf(FileCache::class, $cache);
+        self::assertInstanceOf(FileStore::class, $this->cacheManager->cache('custom')->getStore());
     }
 
-    public function testAddCacheThrowsExceptionIfCacheAlreadyExists(): void
+    public function testAddStoreThrowsExceptionIfStoreAlreadyExists(): void
     {
         $this->expectException(CacheException::class);
 
-        $this->cacheManager->addCache('custom', fn() => new FileCache(__DIR__));
-        $this->cacheManager->addCache('custom', fn() => new FileCache(__DIR__));
+        $this->cacheManager->addStore('custom', fn() => new FileStore(__DIR__));
+        $this->cacheManager->addStore('custom', fn() => new FileStore(__DIR__));
     }
 
-    public function testAddCacheThrowsExceptionIfManagedCacheNameIsUsed(): void
+    public function testAddStoreThrowsExceptionIfManagedStoreNameIsUsed(): void
     {
         $this->expectException(CacheException::class);
 
-        $this->cacheManager->addCache(CacheManager::FILE_CACHE, fn() => new FileCache(__DIR__), true);
+        $this->cacheManager->addStore(CacheManager::FILE_STORE, fn() => new FileStore(__DIR__), true);
     }
 
-    public function testAddCacheWithForceFlag(): void
+    public function testAddStoreWithForceFlag(): void
     {
-        $cache1 = new FileCache(__DIR__);
-        $cache2 = new FileCache(__DIR__);
+        $store1 = new FileStore(__DIR__);
+        $store2 = new FileStore(__DIR__);
 
-        $this->cacheManager->addCache('custom', fn() => $cache1);
-        $this->cacheManager->addCache('custom', fn() => $cache2, true);
+        $this->cacheManager->addStore('custom', fn() => $store1);
+        $this->cacheManager->addStore('custom', fn() => $store2, true);
 
-        $cache = $this->cacheManager->cache('custom');
+        $store = $this->cacheManager->cache('custom')->getStore();
 
-        self::assertNotSame($cache1, $cache);
-        self::assertSame($cache2, $cache);
+        self::assertNotSame($store1, $store);
+        self::assertSame($store2, $store);
     }
 }

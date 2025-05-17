@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Zaphyr\Cache;
+namespace Zaphyr\Cache\Stores;
 
 use DateInterval;
 use Throwable;
@@ -11,7 +11,7 @@ use Zaphyr\Utils\File;
 /**
  * @author merloxx <merloxx@zaphyr.org>
  */
-class FileCache extends AbstractCache
+class FileStore extends AbstractStore
 {
     /**
      * @param string   $path
