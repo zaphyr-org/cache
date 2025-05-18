@@ -6,6 +6,8 @@ namespace Zaphyr\Cache;
 
 use Closure;
 use Predis\Client;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\SimpleCache\CacheInterface as PsrCacheInterface;
 use Zaphyr\Cache\Contracts\CacheInterface;
 use Zaphyr\Cache\Contracts\CacheManagerInterface;
 use Zaphyr\Cache\Exceptions\CacheException;
@@ -66,11 +68,15 @@ class CacheManager implements CacheManagerInterface
     protected array $customStores = [];
 
     /**
-     * @param array<string, mixed> $storeConfig
-     * @param string               $defaultStore
+     * @param array<string, mixed>          $storeConfig
+     * @param string                        $defaultStore
+     * @param EventDispatcherInterface|null $eventDispatcher
      */
-    public function __construct(protected array $storeConfig, protected string $defaultStore = self::FILE_STORE)
-    {
+    public function __construct(
+        protected array $storeConfig,
+        protected string $defaultStore = self::FILE_STORE,
+        protected ?EventDispatcherInterface $eventDispatcher = null
+    ) {
     }
 
     /**
@@ -124,7 +130,7 @@ class CacheManager implements CacheManagerInterface
      */
     protected function createArrayStore(): CacheInterface
     {
-        return new Cache(new ArrayStore());
+        return $this->buildCache(self::ARRAY_STORE, new ArrayStore());
     }
 
     /**
@@ -135,7 +141,7 @@ class CacheManager implements CacheManagerInterface
         $path = $this->storeConfig[self::FILE_STORE]['path'] ?? sys_get_temp_dir();
         $permissions = $this->storeConfig[self::FILE_STORE]['permissions'] ?? null;
 
-        return new Cache(new FileStore($path, $permissions));
+        return $this->buildCache(self::FILE_STORE, new FileStore($path, $permissions));
     }
 
     /**
@@ -155,7 +161,7 @@ class CacheManager implements CacheManagerInterface
 
         $prefix = $config['prefix'] ?? 'zaphyr_';
 
-        return new Cache(new RedisStore(new Client($parameters), $prefix));
+        return $this->buildCache(self::REDIS_STORE, new RedisStore(new Client($parameters), $prefix));
     }
 
     /**
@@ -170,6 +176,11 @@ class CacheManager implements CacheManagerInterface
             throw new CacheException('Cache store with name "' . $name . '" does not exist.');
         }
 
-        return new Cache($this->customStores[$name]());
+        return $this->buildCache($name, $this->customStores[$name]());
+    }
+
+    protected function buildCache(string $storeName, PsrCacheInterface $storeInstance): CacheInterface
+    {
+        return new Cache($storeName, $storeInstance, $this->eventDispatcher);
     }
 }

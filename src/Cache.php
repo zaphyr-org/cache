@@ -5,8 +5,25 @@ declare(strict_types=1);
 namespace Zaphyr\Cache;
 
 use DateInterval;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Zaphyr\Cache\Contracts\CacheInterface;
 use Psr\SimpleCache\CacheInterface as PsrCacheInterface;
+use Zaphyr\Cache\Events\CacheClearedEvent;
+use Zaphyr\Cache\Events\CacheClearMissedEvent;
+use Zaphyr\Cache\Events\CacheDeletedEvent;
+use Zaphyr\Cache\Events\CacheDeleteMissedEvent;
+use Zaphyr\Cache\Events\CacheHasEvent;
+use Zaphyr\Cache\Events\CacheHasMissedEvent;
+use Zaphyr\Cache\Events\CacheHitEvent;
+use Zaphyr\Cache\Events\CacheMissedEvent;
+use Zaphyr\Cache\Events\CacheMultipleDeletedEvent;
+use Zaphyr\Cache\Events\CacheMultipleDeleteMissedEvent;
+use Zaphyr\Cache\Events\CacheMultipleHitEvent;
+use Zaphyr\Cache\Events\CacheMultipleMissedEvent;
+use Zaphyr\Cache\Events\CacheWriteMultipleMissedEvent;
+use Zaphyr\Cache\Events\CacheWrittenMultipleEvent;
+use Zaphyr\Cache\Events\CacheWriteMissedEvent;
+use Zaphyr\Cache\Events\CacheWrittenEvent;
 
 /**
  * @author merloxx <merloxx@zaphyr.org>
@@ -14,10 +31,15 @@ use Psr\SimpleCache\CacheInterface as PsrCacheInterface;
 class Cache implements CacheInterface
 {
     /**
-     * @param PsrCacheInterface $store
+     * @param string                        $storeName
+     * @param PsrCacheInterface             $storeInstance
+     * @param EventDispatcherInterface|null $eventDispatcher
      */
-    public function __construct(protected PsrCacheInterface $store)
-    {
+    public function __construct(
+        protected string $storeName,
+        protected PsrCacheInterface $storeInstance,
+        protected ?EventDispatcherInterface $eventDispatcher = null
+    ) {
     }
 
     /**
@@ -25,7 +47,7 @@ class Cache implements CacheInterface
      */
     public function getStore(): PsrCacheInterface
     {
-        return $this->store;
+        return $this->storeInstance;
     }
 
     /**
@@ -33,7 +55,15 @@ class Cache implements CacheInterface
      */
     public function get(string $key, mixed $default = null): mixed
     {
-        return $this->store->get($key, $default);
+        $value = $this->storeInstance->get($key, $default);
+
+        if ($value === null) {
+            $this->dispatchEvent(new CacheMissedEvent($this->storeName, $key));
+        } else {
+            $this->dispatchEvent(new CacheHitEvent($this->storeName, $key, $value));
+        }
+
+        return $value;
     }
 
     /**
@@ -41,7 +71,15 @@ class Cache implements CacheInterface
      */
     public function set(string $key, mixed $value, DateInterval|int|null $ttl = null): bool
     {
-        return $this->store->set($key, $value, $ttl);
+        $success = $this->storeInstance->set($key, $value, $ttl);
+
+        if ($success) {
+            $this->dispatchEvent(new CacheWrittenEvent($this->storeName, $key, $value, $ttl));
+        } else {
+            $this->dispatchEvent(new CacheWriteMissedEvent($this->storeName, $key, $value, $ttl));
+        }
+
+        return $success;
     }
 
     /**
@@ -49,7 +87,15 @@ class Cache implements CacheInterface
      */
     public function delete(string $key): bool
     {
-        return $this->store->delete($key);
+        $success = $this->storeInstance->delete($key);
+
+        if ($success) {
+            $this->dispatchEvent(new CacheDeletedEvent($this->storeName, $key));
+        } else {
+            $this->dispatchEvent(new CacheDeleteMissedEvent($this->storeName, $key));
+        }
+
+        return $success;
     }
 
     /**
@@ -57,7 +103,15 @@ class Cache implements CacheInterface
      */
     public function clear(): bool
     {
-        return $this->store->clear();
+        $success = $this->storeInstance->clear();
+
+        if ($success) {
+            $this->dispatchEvent(new CacheClearedEvent($this->storeName));
+        } else {
+            $this->dispatchEvent(new CacheClearMissedEvent($this->storeName));
+        }
+
+        return $success;
     }
 
     /**
@@ -65,7 +119,27 @@ class Cache implements CacheInterface
      */
     public function getMultiple(iterable $keys, mixed $default = null): iterable
     {
-        return $this->store->getMultiple($keys, $default);
+        $results = $this->storeInstance->getMultiple($keys, $default);
+        $hits = [];
+        $misses = [];
+
+        foreach ($results as $key => $value) {
+            if ($value === null) {
+                $misses[] = $key;
+            } else {
+                $hits[$key] = $value;
+            }
+        }
+
+        if (!empty($hits)) {
+            $this->dispatchEvent(new CacheMultipleHitEvent($this->storeName, $hits));
+        }
+
+        if (!empty($misses)) {
+            $this->dispatchEvent(new CacheMultipleMissedEvent($this->storeName, $misses));
+        }
+
+        return $results;
     }
 
     /**
@@ -75,15 +149,32 @@ class Cache implements CacheInterface
      */
     public function setMultiple(iterable $values, DateInterval|int|null $ttl = null): bool
     {
-        return $this->store->setMultiple($values, $ttl);
+        $success = $this->storeInstance->setMultiple($values, $ttl);
+
+        if ($success) {
+            $this->dispatchEvent(new CacheWrittenMultipleEvent($this->storeName, $values, $ttl));
+        } else {
+            $this->dispatchEvent(new CacheWriteMultipleMissedEvent($this->storeName, $values, $ttl));
+        }
+
+        return $success;
     }
+
 
     /**
      * {@inheritdoc}
      */
     public function deleteMultiple(iterable $keys): bool
     {
-        return $this->store->deleteMultiple($keys);
+        $success = $this->storeInstance->deleteMultiple($keys);
+
+        if ($success) {
+            $this->dispatchEvent(new CacheMultipleDeletedEvent($this->storeName, $keys));
+        } else {
+            $this->dispatchEvent(new CacheMultipleDeleteMissedEvent($this->storeName, $keys));
+        }
+
+        return $success;
     }
 
     /**
@@ -91,6 +182,24 @@ class Cache implements CacheInterface
      */
     public function has(string $key): bool
     {
-        return $this->store->has($key);
+        $success = $this->storeInstance->has($key);
+
+        if ($success) {
+            $this->dispatchEvent(new CacheHasEvent($this->storeName, $key));
+        } else {
+            $this->dispatchEvent(new CacheHasMissedEvent($this->storeName, $key));
+        }
+
+        return $success;
+    }
+
+    /**
+     * @param object $event
+     *
+     * @return void
+     */
+    protected function dispatchEvent(object $event): void
+    {
+        $this->eventDispatcher?->dispatch($event);
     }
 }

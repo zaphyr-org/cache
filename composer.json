@@ -16,6 +16,7 @@
     ],
     "require": {
         "php": ">=8.1",
+        "psr/event-dispatcher": "^1.0",
         "psr/simple-cache": "^3.0",
         "zaphyr-org/utils": "^2.2"
     },
@@ -30,7 +31,8 @@
         "psr/simple-cache-implementation": "^3.0"
     },
     "suggest": {
-        "predis/predis": "The redis client for PHP. Required for Redis cache."
+        "predis/predis": "The redis client for PHP. Required for Redis cache.",
+        "zaphyr-org/event-dispatcher": "An efficient PSR-14 event dispatcher."
     },
     "autoload": {
         "psr-4": {

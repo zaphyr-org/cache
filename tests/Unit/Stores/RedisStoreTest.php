@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Zaphyr\CacheTests\Unit;
+namespace Zaphyr\CacheTests\Unit\Stores;
 
 use ArrayIterator;
 use DateInterval;
@@ -13,6 +13,7 @@ use Predis\Client;
 use Predis\ClientInterface;
 use Psr\SimpleCache\InvalidArgumentException;
 use Zaphyr\Cache\Stores\RedisStore;
+use Zaphyr\CacheTests\Unit\TestDataProvider;
 
 class RedisStoreTest extends TestCase
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Zaphyr\CacheTests\Unit;
+namespace Zaphyr\CacheTests\Unit\Stores;
 
 use ArrayIterator;
 use DateInterval;
@@ -10,6 +10,7 @@ use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
 use Psr\SimpleCache\InvalidArgumentException;
 use Zaphyr\Cache\Stores\FileStore;
+use Zaphyr\CacheTests\Unit\TestDataProvider;
 use Zaphyr\Utils\File;
 
 class FileStoreTest extends TestCase
