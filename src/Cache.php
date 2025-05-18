@@ -53,6 +53,23 @@ class Cache implements CacheInterface
     /**
      * {@inheritdoc}
      */
+    public function remember(string $key, callable $value, DateInterval|int|null $ttl = null): mixed
+    {
+        $result = $this->get($key);
+
+        if ($result !== null) {
+            return $result;
+        }
+
+        $result = $value();
+        $this->set($key, $result, $ttl);
+
+        return $result;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function get(string $key, mixed $default = null): mixed
     {
         $value = $this->storeInstance->get($key, $default);

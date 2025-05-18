@@ -70,6 +70,108 @@ class CacheTest extends TestCase
     }
 
     /* -------------------------------------------------
+     * REMENBER
+     * -------------------------------------------------
+     */
+
+    public function testRemember(): void
+    {
+        $expected = 'test_value';
+
+        $this->storeMock
+            ->expects(self::once())
+            ->method('get')
+            ->with('test.key', null)
+            ->willReturn(null);
+
+        $this->storeMock
+            ->expects(self::once())
+            ->method('set')
+            ->with('test.key', $expected, null)
+            ->willReturn(true);
+
+        $result = $this->cache->remember('test.key', fn() => $expected);
+
+        self::assertEquals($expected, $result);
+    }
+
+    public function testRememberWithDefaultValue(): void
+    {
+        $expected = 'test_value';
+
+        $this->storeMock
+            ->expects(self::once())
+            ->method('get')
+            ->with('test.key', null)
+            ->willReturn($expected);
+
+        $this->storeMock
+            ->expects(self::never())
+            ->method('set');
+
+        $result = $this->cache->remember('test.key', fn() => 'other_value');
+
+        self::assertEquals($expected, $result);
+    }
+
+    public function testRememberWithCacheHitEvent(): void
+    {
+        $expected = 'test_value';
+
+        $this->storeMock
+            ->expects(self::once())
+            ->method('get')
+            ->with('test.key', null)
+            ->willReturn($expected);
+
+        $this->eventDispatcherMock
+            ->expects(self::once())
+            ->method('dispatch')
+            ->with(self::isInstanceOf(CacheHitEvent::class));
+
+        $result = $this->cacheWithEvents->remember('test.key', fn() => 'other_value');
+
+        self::assertEquals($expected, $result);
+    }
+
+    public function testRememberWithCacheMissedEvent(): void
+    {
+        $expected = 'test_value';
+        $ttl = 3600;
+
+        $this->storeMock
+            ->expects(self::once())
+            ->method('get')
+            ->with('test.key', null)
+            ->willReturn(null);
+
+        $this->storeMock
+            ->expects(self::once())
+            ->method('set')
+            ->with('test.key', $expected, $ttl)
+            ->willReturn(true);
+
+        $this->eventDispatcherMock
+            ->expects(self::exactly(2))
+            ->method('dispatch')
+            ->willReturnCallback(function ($event) use ($expected, $ttl) {
+                if ($event instanceof CacheMissedEvent) {
+                    self::assertEquals('testStoreWithCache', $event->getStoreName());
+                    self::assertEquals('test.key', $event->getKey());
+                } elseif ($event instanceof CacheWrittenEvent) {
+                    self::assertEquals('testStoreWithCache', $event->getStoreName());
+                    self::assertEquals('test.key', $event->getKey());
+                    self::assertEquals($expected, $event->getValue());
+                    self::assertEquals($ttl, $event->getTtl());
+                }
+            });
+
+        $result = $this->cacheWithEvents->remember('test.key', fn() => $expected, $ttl);
+
+        self::assertEquals($expected, $result);
+    }
+
+    /* -------------------------------------------------
      * GET
      * -------------------------------------------------
      */
