@@ -6,6 +6,7 @@ namespace Zaphyr\Cache\Stores;
 
 use DateInterval;
 use DateTime;
+use Generator;
 use Psr\SimpleCache\CacheInterface;
 use Zaphyr\Cache\Exceptions\InvalidArgumentException;
 
@@ -109,5 +110,15 @@ abstract class AbstractStore implements CacheInterface
     protected function convertDateIntervalToTimestamp(DateInterval $interval): int
     {
         return (new DateTime())->add($interval)->getTimestamp();
+    }
+
+    /**
+     * @param iterable<string, mixed> $values
+     *
+     * @return iterable<string, mixed>
+     */
+    protected function prepareIterable(iterable $values): iterable
+    {
+        return $values instanceof Generator ? iterator_to_array($values) : $values;
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Zaphyr\Cache\Stores;
 
 use DateInterval;
+use Generator;
 
 /**
  * @author merloxx <merloxx@zaphyr.org>
@@ -39,7 +40,7 @@ class ArrayStore extends AbstractStore
             return $default;
         }
 
-        return $item['value'];
+        return unserialize($item['value']);
     }
 
     /**
@@ -49,7 +50,7 @@ class ArrayStore extends AbstractStore
     {
         $this->validateKey($key);
 
-        $this->storage[$key] = $this->createCacheItem($value, $ttl);
+        $this->storage[$key] = $this->createCacheItem(serialize($value), $ttl);
 
         return true;
     }
@@ -85,6 +86,7 @@ class ArrayStore extends AbstractStore
      */
     public function getMultiple(iterable $keys, mixed $default = null): iterable
     {
+        $keys = $this->prepareIterable($keys);
         $this->validateMultipleKeys($keys);
 
         $result = [];
@@ -103,6 +105,8 @@ class ArrayStore extends AbstractStore
      */
     public function setMultiple(iterable $values, DateInterval|int|null $ttl = null): bool
     {
+        $values = $this->prepareIterable($values);
+
         foreach ($values as $key => $value) {
             $this->validateKey($key);
         }
@@ -123,6 +127,7 @@ class ArrayStore extends AbstractStore
      */
     public function deleteMultiple(iterable $keys): bool
     {
+        $keys = $this->prepareIterable($keys);
         $this->validateMultipleKeys($keys);
 
         $success = true;

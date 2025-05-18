@@ -95,6 +95,7 @@ class RedisStore extends AbstractStore
      */
     public function getMultiple(iterable $keys, mixed $default = null): iterable
     {
+        $keys = $this->prepareIterable($keys);
         $this->validateMultipleKeys($keys);
 
         $results = [];
@@ -113,6 +114,8 @@ class RedisStore extends AbstractStore
      */
     public function setMultiple(iterable $values, DateInterval|int|null $ttl = null): bool
     {
+        $values = $this->prepareIterable($values);
+
         foreach ($values as $key => $value) {
             $this->validateKey($key);
         }
@@ -133,6 +136,7 @@ class RedisStore extends AbstractStore
      */
     public function deleteMultiple(iterable $keys): bool
     {
+        $keys = $this->prepareIterable($keys);
         $this->validateMultipleKeys($keys);
 
         $success = true;

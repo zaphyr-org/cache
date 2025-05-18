@@ -9,16 +9,16 @@ use DateInterval;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Predis\Client;
 use Predis\ClientInterface;
 use Psr\SimpleCache\InvalidArgumentException;
+use stdClass;
 use Zaphyr\Cache\Stores\RedisStore;
 use Zaphyr\CacheTests\Unit\TestDataProvider;
 
 class RedisStoreTest extends TestCase
 {
     /**
-     * @var Client&MockObject
+     * @var ClientInterface&MockObject
      */
     protected ClientInterface&MockObject $clientMock;
 
@@ -122,6 +122,45 @@ class RedisStoreTest extends TestCase
         self::assertEquals($defaultValue, $this->redisStore->get($key, $defaultValue));
     }
 
+    public function testGetWithObjectAsDefaultValue(): void
+    {
+        $key = 'test_key';
+        $defaultValue = new stdClass();
+        $defaultValue->foo = 'bar';
+
+        $this->clientMock
+            ->expects(self::once())
+            ->method('__call')
+            ->with('get', [$key])
+            ->willReturn(null);
+
+        self::assertEquals($defaultValue, $this->redisStore->get($key, $defaultValue));
+    }
+
+    public function testGetWithObjectDoesNotChangeInCache(): void
+    {
+        $key = 'test_key';
+
+        $object = new stdClass();
+        $object->foo = 'original';
+        $serializedValue = serialize($object);
+
+        $this->clientMock
+            ->expects(self::once())
+            ->method('__call')
+            ->willReturnCallback(function ($command, $arguments) use ($key, $serializedValue) {
+                return match ($command) {
+                    'get' => $arguments === [$key] ? $serializedValue : null,
+                    default => null,
+                };
+            });
+
+        $object->foo = 'changed';
+        $cachedObject = $this->redisStore->get($key);
+
+        self::assertEquals('original', $cachedObject->foo);
+    }
+
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
     public function testGetThrowsExceptionOnInvalidKey(string $illegalKey): void
     {
@@ -194,6 +233,33 @@ class RedisStoreTest extends TestCase
             ->willReturn(true);
 
         self::assertFalse($this->redisStore->set($key, $value, $ttl));
+    }
+
+    #[DataProviderExternal(TestDataProvider::class, 'getValidKeysDataProvider')]
+    public function testSetWithValidKey(string $validKey): void
+    {
+        $this->redisStore->set($validKey, 'test_value');
+
+        $this->clientMock
+            ->method('__call')
+            ->with('get', [$validKey])
+            ->willReturn(serialize('test_value'));
+
+        self::assertEquals('test_value', $this->redisStore->get($validKey));
+    }
+
+    #[DataProviderExternal(TestDataProvider::class, 'getValidValuesDataProvider')]
+    public function testSetWithValidValue(mixed $validValue): void
+    {
+        $key = 'test_key';
+        $this->redisStore->set($key, $validValue);
+
+        $this->clientMock
+            ->method('__call')
+            ->with('get', [$key])
+            ->willReturn(serialize($validValue));
+
+        self::assertEquals($validValue, $this->redisStore->get($key));
     }
 
     #[DataProviderExternal(TestDataProvider::class, 'getIllegalCharactersDataProvider')]
@@ -357,6 +423,88 @@ class RedisStoreTest extends TestCase
         self::assertEquals($items, $this->redisStore->getMultiple($keys));
     }
 
+    public function testGetMultipleWithObjectAsDefaultValue(): void
+    {
+        $keys = ['non_existent_key'];
+        $defaultValue = new stdClass();
+        $defaultValue->foo = 'bar';
+
+        $this->clientMock
+            ->expects(self::once())
+            ->method('__call')
+            ->with('get', [$keys[0]])
+            ->willReturn(null);
+
+        self::assertEquals(
+            ['non_existent_key' => $defaultValue],
+            $this->redisStore->getMultiple($keys, $defaultValue)
+        );
+    }
+
+    public function testGetMultipleWithObjectDoesNotChangeInCache(): void
+    {
+        $key = 'test.key';
+
+        $object = new stdClass();
+        $object->foo = 'original';
+        $serializedValue = serialize($object);
+
+        $this->clientMock
+            ->expects(self::once())
+            ->method('__call')
+            ->willReturnCallback(function ($command, $arguments) use ($key, $serializedValue) {
+                return match ($command) {
+                    'get' => $arguments === [$key] ? $serializedValue : null,
+                    default => null,
+                };
+            });
+
+        $object->foo = 'changed';
+        $cachedObject = $this->redisStore->getMultiple([$key]);
+
+        self::assertEquals('original', $cachedObject[$key]->foo);
+    }
+
+    public function testGetMultipleWithGenerator(): void
+    {
+        $generator = static function () {
+            yield 0 => 'test.key0';
+            yield 1 => 'test.key1';
+        };
+
+        $this->clientMock
+            ->expects(self::exactly(4))
+            ->method('__call')
+            ->willReturnCallback(function ($command, $arguments) {
+                if ($command === 'get') {
+                    $key = $arguments[0];
+
+                    return ($key === 'test.key0') ? serialize('test_value0') : null;
+                }
+
+                return null;
+            });
+
+        $result = $this->redisStore->getMultiple($generator());
+
+        $keys = [];
+        foreach ($result as $key => $value) {
+            $keys[] = $key;
+
+            if ($key === 'test.key0') {
+                self::assertEquals('test_value0', $value);
+            } elseif ($key === 'test.key1') {
+                self::assertNull($value);
+            }
+        }
+
+        sort($keys);
+
+        self::assertSame(['test.key0', 'test.key1'], $keys);
+        self::assertEquals('test_value0', $this->redisStore->get('test.key0'));
+        self::assertNull($this->redisStore->get('test.key1'));
+    }
+
     public function testGetMultipleWithValidAndInvalidKeysThrowsException(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -497,6 +645,57 @@ class RedisStoreTest extends TestCase
         self::assertTrue($this->redisStore->setMultiple($items));
     }
 
+    public function testSetMultipleWithGenerator(): void
+    {
+        $items = static function () {
+            yield 'test.key1' => 'test_value1';
+            yield 'test.key2' => 'test_value2';
+        };
+
+        $this->clientMock
+            ->expects(self::exactly(2))
+            ->method('__call')
+            ->willReturnCallback(function ($command, $arguments) use ($items) {
+                if ($command === 'set') {
+                    $key = $arguments[0];
+                    $value = unserialize($arguments[1]);
+                    $items = iterator_to_array($items());
+
+                    return isset($items[$key]) && $value === $items[$key];
+                }
+
+                return null;
+            });
+
+        self::assertTrue($this->redisStore->setMultiple($items()));
+    }
+    #[DataProviderExternal(TestDataProvider::class, 'getValidKeysDataProvider')]
+    public function testSetMultipleWithValidKey(string $validKey): void
+    {
+        $this->redisStore->setMultiple([$validKey => 'test_value']);
+
+        $this->clientMock
+            ->method('__call')
+            ->with('get', [$validKey])
+            ->willReturn(serialize('test_value'));
+
+        self::assertEquals('test_value', $this->redisStore->get($validKey));
+    }
+
+    #[DataProviderExternal(TestDataProvider::class, 'getValidValuesDataProvider')]
+    public function testSetMultipleWithValidValue(mixed $validValue): void
+    {
+        $key = 'test_key';
+        $this->redisStore->setMultiple([$key => $validValue]);
+
+        $this->clientMock
+            ->method('__call')
+            ->with('get', [$key])
+            ->willReturn(serialize($validValue));
+
+        self::assertEquals($validValue, $this->redisStore->get($key));
+    }
+
     public function testSetMultipleWithMixedValidAndInvalidKeysThrowsException(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -606,6 +805,33 @@ class RedisStoreTest extends TestCase
             });
 
         self::assertTrue($this->redisStore->deleteMultiple($keys));
+    }
+
+    public function testDeleteMultipleWithGenerator(): void
+    {
+        $generator = static function () {
+            yield 0 => 'test.key1';
+            yield 1 => 'test.key2';
+        };
+
+        $this->clientMock
+            ->expects(self::exactly(2))
+            ->method('__call')
+            ->willReturnCallback(function ($command, $arguments) {
+                $items = [
+                    'test.key1' => 'test_value1',
+                    'test.key2' => 'test_value2',
+                ];
+                if ($command === 'del') {
+                    $key = $arguments[0];
+
+                    return isset($items[$key]);
+                }
+
+                return null;
+            });
+
+        self::assertTrue($this->redisStore->deleteMultiple($generator()));
     }
 
     public function testDeleteMultipleWithValidAndInvalidKeysThrowsException(): void
