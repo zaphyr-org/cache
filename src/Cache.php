@@ -20,8 +20,8 @@ use Zaphyr\Cache\Events\CacheMultipleDeletedEvent;
 use Zaphyr\Cache\Events\CacheMultipleDeleteMissedEvent;
 use Zaphyr\Cache\Events\CacheMultipleHitEvent;
 use Zaphyr\Cache\Events\CacheMultipleMissedEvent;
-use Zaphyr\Cache\Events\CacheWriteMultipleMissedEvent;
-use Zaphyr\Cache\Events\CacheWrittenMultipleEvent;
+use Zaphyr\Cache\Events\CacheMultipleWriteMissedEvent;
+use Zaphyr\Cache\Events\CacheMultipleWrittenEvent;
 use Zaphyr\Cache\Events\CacheWriteMissedEvent;
 use Zaphyr\Cache\Events\CacheWrittenEvent;
 
@@ -169,9 +169,9 @@ class Cache implements CacheInterface
         $success = $this->storeInstance->setMultiple($values, $ttl);
 
         if ($success) {
-            $this->dispatchEvent(new CacheWrittenMultipleEvent($this->storeName, $values, $ttl));
+            $this->dispatchEvent(new CacheMultipleWrittenEvent($this->storeName, $values, $ttl));
         } else {
-            $this->dispatchEvent(new CacheWriteMultipleMissedEvent($this->storeName, $values, $ttl));
+            $this->dispatchEvent(new CacheMultipleWriteMissedEvent($this->storeName, $values, $ttl));
         }
 
         return $success;

@@ -9,7 +9,7 @@ use DateInterval;
 /**
  * @author merloxx <merloxx@zaphyr.org>
  */
-class CacheWriteMultipleMissedEvent
+class CacheMultipleWrittenEvent
 {
     /**
      * @param string                  $storeName
@@ -39,6 +39,9 @@ class CacheWriteMultipleMissedEvent
         return $this->values;
     }
 
+    /**
+     * @return DateInterval|int|null
+     */
     public function getTtl(): DateInterval|int|null
     {
         return $this->ttl;

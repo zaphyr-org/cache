@@ -22,9 +22,9 @@ use Zaphyr\Cache\Events\CacheMultipleDeleteMissedEvent;
 use Zaphyr\Cache\Events\CacheMultipleHitEvent;
 use Zaphyr\Cache\Events\CacheMultipleMissedEvent;
 use Zaphyr\Cache\Events\CacheWriteMissedEvent;
-use Zaphyr\Cache\Events\CacheWriteMultipleMissedEvent;
+use Zaphyr\Cache\Events\CacheMultipleWriteMissedEvent;
 use Zaphyr\Cache\Events\CacheWrittenEvent;
-use Zaphyr\Cache\Events\CacheWrittenMultipleEvent;
+use Zaphyr\Cache\Events\CacheMultipleWrittenEvent;
 use Zaphyr\Cache\Stores\ArrayStore;
 
 class CacheTest extends TestCase
@@ -451,7 +451,7 @@ class CacheTest extends TestCase
         $this->eventDispatcherMock
             ->expects(self::once())
             ->method('dispatch')
-            ->with(self::isInstanceOf(CacheWrittenMultipleEvent::class));
+            ->with(self::isInstanceOf(CacheMultipleWrittenEvent::class));
 
         self::assertTrue($this->cacheWithEvents->setMultiple(['test.key' => 'test_value']));
     }
@@ -467,7 +467,7 @@ class CacheTest extends TestCase
         $this->eventDispatcherMock
             ->expects(self::once())
             ->method('dispatch')
-            ->with(self::isInstanceOf(CacheWriteMultipleMissedEvent::class));
+            ->with(self::isInstanceOf(CacheMultipleWriteMissedEvent::class));
 
         self::assertFalse($this->cacheWithEvents->setMultiple(['test.key' => 'test_value']));
     }

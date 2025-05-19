@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Zaphyr\CacheTests\Unit\Events;
 
 use PHPUnit\Framework\TestCase;
-use Zaphyr\Cache\Events\CacheWriteMultipleMissedEvent;
+use Zaphyr\Cache\Events\CacheMultipleWriteMissedEvent;
 
-class CacheWriteMultipleMissedEventTest extends TestCase
+class CacheMultipleWriteMissedEventTest extends TestCase
 {
     /**
-     * @var CacheWriteMultipleMissedEvent
+     * @var CacheMultipleWriteMissedEvent
      */
-    protected CacheWriteMultipleMissedEvent $event;
+    protected CacheMultipleWriteMissedEvent $event;
 
     /**
      * @var string
@@ -31,7 +31,7 @@ class CacheWriteMultipleMissedEventTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->event = new CacheWriteMultipleMissedEvent($this->storeName, $this->values, $this->ttl);
+        $this->event = new CacheMultipleWriteMissedEvent($this->storeName, $this->values, $this->ttl);
     }
 
     protected function tearDown(): void
