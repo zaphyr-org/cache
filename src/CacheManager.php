@@ -159,9 +159,7 @@ class CacheManager implements CacheManagerInterface
             )
         );
 
-        $prefix = $config['prefix'] ?? 'zaphyr_';
-
-        return $this->buildCache(self::REDIS_STORE, new RedisStore(new Client($parameters), $prefix));
+        return $this->buildCache(self::REDIS_STORE, new RedisStore(new Client($parameters), $config['prefix'] ?? ''));
     }
 
     /**
