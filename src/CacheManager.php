@@ -151,7 +151,7 @@ class CacheManager implements CacheManagerInterface
     {
         $config = $this->storeConfig[self::REDIS_STORE] ?? [];
 
-        $parameters = array_merge(
+        $parameters = $config['connection'] ?? array_merge(
             self::REDIS_DEFAULT_CONFIG,
             array_intersect_key(
                 $config,

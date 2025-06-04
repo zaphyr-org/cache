@@ -34,6 +34,57 @@ class CacheManagerTest extends TestCase
     }
 
     /* -------------------------------------------------
+     * CONSTRUCTOR
+     * -------------------------------------------------
+     */
+
+    public function testConstructorWithFileStoreConfiguration(): void
+    {
+        $this->cacheManager = new CacheManager([
+            CacheManager::FILE_STORE => [
+                'path' => __DIR__,
+            ],
+        ]);
+
+        self::assertInstanceOf(FileStore::class, $this->cacheManager->cache()->getStore());
+    }
+
+    public function testConstructorWithRedisStoreArrayConfiguration(): void
+    {
+        $this->cacheManager = new CacheManager([
+            CacheManager::REDIS_STORE => [
+                'scheme' => 'tcp',
+                'host' => '127.0.0.1',
+                'port' => 6379,
+                'async' => false,
+                'persistent' => false,
+                'timeout' => 5.0,
+                'path' => __DIR__,
+                'database' => 0,
+                'password' => null,
+                'username' => null,
+                'read_write_timeout' => 0,
+                'alias' => 'default',
+                'weight' => 1,
+                'client_info' => 'Zaphyr Cache',
+            ],
+        ], CacheManager::REDIS_STORE);
+
+        self::assertInstanceOf(RedisStore::class, $this->cacheManager->cache()->getStore());
+    }
+
+    public function testConstructorWithRedisStoreStringConfiguration(): void
+    {
+        $this->cacheManager = new CacheManager([
+            CacheManager::REDIS_STORE => [
+                'connection' => 'tcp://127.0.0.1:6379?database=0&password=null&username=null',
+            ],
+        ], CacheManager::REDIS_STORE);
+
+        self::assertInstanceOf(RedisStore::class, $this->cacheManager->cache()->getStore());
+    }
+
+    /* -------------------------------------------------
      * CACHE
      * -------------------------------------------------
      */
